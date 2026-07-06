@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FC Barcelona CNN Player Classifier</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="glass-bg"></div>
+    <div class="app-container">
+        
+        <!-- Header -->
+        <header class="app-header">
+            <div class="logo-area">
+                <i class="fa-solid fa-futbol ball-icon"></i>
+                <div class="logo-text">
+                    <h1>CAMP NOU</h1>
+                    <p>CNN PLAYER CLASSIFIER</p>
+                </div>
+            </div>
+            <div class="header-tag">
+                <span class="tag-accent">TensorFlow 2.x</span>
+                <span class="tag-badge" id="model-status-badge">Model Untrained</span>
+            </div>
+        </header>
+
+        <!-- Main Grid Layout -->
+        <main class="dashboard-grid">
+            
+            <!-- Left Panel: Dataset Manager & Hyperparams -->
+            <section class="left-panel dashboard-card">
+                <div class="card-header">
+                    <h2><i class="fa-solid fa-images icon-blue"></i> Dataset Manager</h2>
+                    <button class="btn btn-primary" id="btn-download-dataset">
+                        <i class="fa-solid fa-cloud-arrow-down"></i> Pull Player Images
+                    </button>
+                </div>
+                
+                <p class="section-desc">Download Barcelona footballer photos from the internet to build the CNN training dataset, or upload your own images below.</p>
+                
+                <!-- Player Cards Grid -->
+                <div class="player-cards">
+                    <!-- Messi -->
+                    <div class="player-card messi-card">
+                        <div class="card-glow"></div>
+                        <div class="jersey-num">10</div>
+                        <div class="player-details">
+                            <h3>Lionel Messi</h3>
+                            <span class="player-pos">Forward / Legend</span>
+                            <div class="image-count">
+                                <i class="fa-regular fa-image"></i> <span id="count-messi">0</span> images
+                            </div>
+                        </div>
+                        <div class="upload-btn-wrapper">
+                            <label class="btn-upload" for="upload-messi">
+                                <i class="fa-solid fa-plus"></i> Add training photo
+                            </label>
+                            <input type="file" id="upload-messi" accept="image/*" class="train-upload-input" data-player="messi">
+                        </div>
+                    </div>
+
+                    <!-- Yamal -->
+                    <div class="player-card yamal-card">
+                        <div class="card-glow"></div>
+                        <div class="jersey-num">19</div>
+                        <div class="player-details">
+                            <h3>Lamine Yamal</h3>
+                            <span class="player-pos">Right Winger</span>
+                            <div class="image-count">
+                                <i class="fa-regular fa-image"></i> <span id="count-yamal">0</span> images
+                            </div>
+                        </div>
+                        <div class="upload-btn-wrapper">
+                            <label class="btn-upload" for="upload-yamal">
+                                <i class="fa-solid fa-plus"></i> Add training photo
+                            </label>
+                            <input type="file" id="upload-yamal" accept="image/*" class="train-upload-input" data-player="yamal">
+                        </div>
+                    </div>
+
+                    <!-- Lewandowski -->
+                    <div class="player-card lewandowski-card">
+                        <div class="card-glow"></div>
+                        <div class="jersey-num">9</div>
+                        <div class="player-details">
+                            <h3>R. Lewandowski</h3>
+                            <span class="player-pos">Striker</span>
+                            <div class="image-count">
+                                <i class="fa-regular fa-image"></i> <span id="count-lewandowski">0</span> images
+                            </div>
+                        </div>
+                        <div class="upload-btn-wrapper">
+                            <label class="btn-upload" for="upload-lewandowski">
+                                <i class="fa-solid fa-plus"></i> Add training photo
+                            </label>
+                            <input type="file" id="upload-lewandowski" accept="image/*" class="train-upload-input" data-player="lewandowski">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Training Parameters -->
+                <div class="hyperparams-section">
+                    <h3><i class="fa-solid fa-sliders icon-gold"></i> Training Settings</h3>
+                    <div class="params-row">
+                        <div class="param-group">
+                            <label for="epochs">Epochs</label>
+                            <input type="number" id="epochs" value="10" min="1" max="100">
+                        </div>
+                        <div class="param-group">
+                            <label for="batch_size">Batch Size</label>
+                            <input type="number" id="batch_size" value="4" min="1" max="32">
+                        </div>
+                        <div class="param-group">
+                            <label for="lr">Learning Rate</label>
+                            <select id="lr">
+                                <option value="0.01">0.01 (Fast)</option>
+                                <option value="0.001" selected>0.001 (Recommended)</option>
+                                <option value="0.0001">0.0001 (Slow)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button class="btn btn-secondary btn-block" id="btn-train-model">
+                        <i class="fa-solid fa-gears"></i> Train Convolutional Neural Network
+                    </button>
+                </div>
+            </section>
+
+            <!-- Middle Panel: Live Training Dashboard -->
+            <section class="middle-panel dashboard-card">
+                <div class="card-header">
+                    <h2><i class="fa-solid fa-chart-line icon-red"></i> Training Progress</h2>
+                </div>
+                
+                <!-- Training Console / Status -->
+                <div id="training-console" class="training-console inactive">
+                    <div class="status-indicator">
+                        <span class="status-pulse" id="status-pulse-dot"></span>
+                        <span id="training-status-text">Status: Idle</span>
+                    </div>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar-fill" id="training-progress-fill" style="width: 0%"></div>
+                    </div>
+                    <div class="metrics-summary">
+                        <div class="metric-box">
+                            <span class="metric-label">Epoch</span>
+                            <span class="metric-val" id="metric-epoch">-</span>
+                        </div>
+                        <div class="metric-box">
+                            <span class="metric-label">Loss</span>
+                            <span class="metric-val" id="metric-loss">-</span>
+                        </div>
+                        <div class="metric-box">
+                            <span class="metric-label">Accuracy</span>
+                            <span class="metric-val" id="metric-accuracy">-</span>
+                        </div>
+                        <div class="metric-box">
+                            <span class="metric-label">Val Acc</span>
+                            <span class="metric-val" id="metric-val-acc">-</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts -->
+                <div class="chart-container">
+                    <canvas id="trainingChart"></canvas>
+                </div>
+            </section>
+
+            <!-- Right Panel: Inference Playground & Activation Maps -->
+            <section class="right-panel dashboard-card">
+                <div class="card-header">
+                    <h2><i class="fa-solid fa-wand-magic-sparkles icon-gold"></i> Inference Sandbox</h2>
+                </div>
+                <p class="section-desc">Import a test image of a player (drag & drop, upload, or paste URL) to classify it using the CNN and view convolutional feature maps.</p>
+                
+                <div class="inference-sandbox">
+                    <!-- Drop Zone -->
+                    <div class="drop-zone" id="drop-zone">
+                        <i class="fa-solid fa-images drop-icon"></i>
+                        <p>Drag & Drop player image here, or <span>browse</span></p>
+                        <input type="file" id="test-image-upload" accept="image/*" style="display: none;">
+                        <img id="preview-img" class="preview-img" alt="Test Image Preview">
+                    </div>
+                    
+                    <!-- URL Import -->
+                    <div class="url-input-row">
+                        <input type="text" id="test-image-url" placeholder="Or paste image URL...">
+                        <button class="btn btn-secondary" id="btn-load-url">Load URL</button>
+                    </div>
+
+                    <!-- Cropped Face Preview (Directly below upload preview) -->
+                    <div id="cropped-face-container" style="display: none; margin: 15px 0; text-align: center; background: rgba(255,255,255,0.03); border: 1px dashed var(--border-color); border-radius: 12px; padding: 15px;">
+                        <p class="section-desc" style="margin-bottom: 8px; font-weight: 600; color: var(--barca-gold);">CNN Input (Cropped Face)</p>
+                        <img id="cropped-face-preview" src="" style="width: 120px; height: 120px; border-radius: 12px; border: 2px solid var(--barca-gold); object-fit: cover; box-shadow: 0 4px 15px rgba(0,0,0,0.4);" alt="Cropped Face Preview">
+                    </div>
+
+                    <div class="prediction-results" id="prediction-results">
+                        <h3>Inference Predictions</h3>
+                        <div id="results-list">
+                            <p class="placeholder-text">Please upload or import a player image to see predictions.</p>
+                        </div>
+                    </div>
+
+                    <!-- Activation Maps (First Conv Layer) -->
+                    <div class="activation-maps-section" id="activation-maps-section">
+                        <h3><i class="fa-solid fa-eye icon-blue"></i> First Layer Conv Activations (Feature Maps)</h3>
+                        <p class="section-desc">Visualization of the 16 feature maps from the first convolutional layer (conv2d_1) showing how the CNN extracts shapes, textures, and borders.</p>
+                        <div class="activation-grid" id="activation-grid">
+                            <!-- JS will load images here -->
+                            <div class="placeholder-maps">
+                                <i class="fa-solid fa-microscope"></i>
+                                <p>Feature maps will display here after successful prediction.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+        
+        <!-- Toast Notification -->
+        <div id="toast" class="toast"></div>
+
+        <!-- Footer -->
+        <footer class="app-footer">
+            <p>Més que un club. Powered by TensorFlow & Python FastAPI. Created for Barcelona Footballers Classifier.</p>
+        </footer>
+    </div>
+    <!-- App Script -->
+    <script src="app.js"></script>
+</body>
+</html>

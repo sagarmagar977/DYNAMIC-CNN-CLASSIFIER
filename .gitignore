@@ -1,0 +1,29 @@
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# Python Cache & Compiled Files
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Large Model Weights & Data (Adjust these names to match your project files)
+*.h5
+*.keras
+*.pt
+*.pth
+*.pkl

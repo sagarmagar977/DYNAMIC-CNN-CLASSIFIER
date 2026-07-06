@@ -1,0 +1,771 @@
+/* Style System - FC Barcelona Themed CNN Classifier */
+:root {
+    --bg-dark: #0a0e1a;
+    --card-bg: rgba(18, 25, 47, 0.65);
+    --border-color: rgba(255, 255, 255, 0.08);
+    --text-primary: #f3f4f6;
+    --text-secondary: #9ca3af;
+    --barca-blue: #004d98;
+    --barca-red: #a50044;
+    --barca-gold: #edbb00;
+    --accent-glow-blue: rgba(0, 77, 152, 0.25);
+    --accent-glow-red: rgba(165, 0, 68, 0.25);
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Outfit', sans-serif;
+    background-color: var(--bg-dark);
+    color: var(--text-primary);
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+}
+
+/* Background floating glow effects */
+.glass-bg {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.glass-bg::before, .glass-bg::after {
+    content: '';
+    position: absolute;
+    width: 50vw;
+    height: 50vw;
+    border-radius: 50%;
+    filter: blur(100px);
+    opacity: 0.4;
+    animation: float 20s infinite alternate ease-in-out;
+}
+
+.glass-bg::before {
+    background: radial-gradient(circle, var(--barca-blue) 0%, rgba(0, 77, 152, 0) 70%);
+    top: -10%;
+    left: -10%;
+}
+
+.glass-bg::after {
+    background: radial-gradient(circle, var(--barca-red) 0%, rgba(165, 0, 68, 0) 70%);
+    bottom: -10%;
+    right: -10%;
+    animation-delay: -10s;
+}
+
+@keyframes float {
+    0% {
+        transform: translate(0, 0) scale(1);
+    }
+    100% {
+        transform: translate(8%, 8%) scale(1.1);
+    }
+}
+
+/* App Container */
+.app-container {
+    max-width: 1600px;
+    margin: 0 auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    gap: 20px;
+}
+
+/* Header */
+.app-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 25px;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 16px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+}
+
+.logo-area {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.ball-icon {
+    font-size: 2.2rem;
+    background: linear-gradient(135deg, var(--barca-blue), var(--barca-red));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: rotate 10s linear infinite;
+}
+
+@keyframes rotate {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.logo-text h1 {
+    font-size: 1.4rem;
+    font-weight: 800;
+    letter-spacing: 2px;
+    background: linear-gradient(135deg, #ffffff, var(--barca-gold));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.logo-text p {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    letter-spacing: 1px;
+}
+
+.header-tag {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.tag-accent {
+    font-size: 0.8rem;
+    font-weight: 600;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    padding: 6px 12px;
+    border-radius: 20px;
+}
+
+.tag-badge {
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 6px 12px;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    background-color: var(--barca-red);
+    color: #fff;
+    box-shadow: 0 0 10px rgba(165, 0, 68, 0.4);
+    transition: var(--transition-smooth);
+}
+
+.tag-badge.trained {
+    background-color: #10b981;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
+}
+
+/* Dashboard Grid Layout */
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: 1.1fr 0.9fr 1fr;
+    gap: 20px;
+    flex-grow: 1;
+}
+
+@media (max-width: 1200px) {
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Cards style */
+.dashboard-card {
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 20px;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    padding: 25px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    overflow: hidden;
+    position: relative;
+}
+
+.card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 15px;
+}
+
+.card-header h2 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.icon-blue { color: #3b82f6; }
+.icon-red { color: #ef4444; }
+.icon-gold { color: var(--barca-gold); }
+
+.section-desc {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.5;
+}
+
+/* Buttons */
+.btn {
+    font-family: inherit;
+    font-weight: 600;
+    font-size: 0.85rem;
+    padding: 10px 16px;
+    border-radius: 10px;
+    cursor: pointer;
+    border: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: var(--transition-smooth);
+}
+
+.btn:active {
+    transform: scale(0.96);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, var(--barca-blue), #1d4ed8);
+    color: white;
+    box-shadow: 0 4px 15px rgba(29, 78, 216, 0.3);
+}
+
+.btn-primary:hover:not(:disabled) {
+    box-shadow: 0 4px 20px rgba(29, 78, 216, 0.5);
+    filter: brightness(1.1);
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, var(--barca-red), #be123c);
+    color: white;
+    box-shadow: 0 4px 15px rgba(190, 18, 60, 0.3);
+}
+
+.btn-secondary:hover:not(:disabled) {
+    box-shadow: 0 4px 20px rgba(190, 18, 60, 0.5);
+    filter: brightness(1.1);
+}
+
+.btn-block {
+    width: 100%;
+    padding: 14px;
+}
+
+.btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Player Cards Grid */
+.player-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.player-card {
+    position: relative;
+    border: 1px solid var(--border-color);
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 12px;
+    padding: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    overflow: hidden;
+    transition: var(--transition-smooth);
+}
+
+.player-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.messi-card { border-left: 4px solid var(--barca-blue); }
+.yamal-card { border-left: 4px solid var(--barca-red); }
+.lewandowski-card { border-left: 4px solid var(--barca-gold); }
+
+.card-glow {
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    filter: blur(40px);
+    top: -20px;
+    left: -20px;
+    opacity: 0.15;
+    pointer-events: none;
+}
+.messi-card .card-glow { background: var(--barca-blue); }
+.yamal-card .card-glow { background: var(--barca-red); }
+.lewandowski-card .card-glow { background: var(--barca-gold); }
+
+.jersey-num {
+    font-size: 2.2rem;
+    font-weight: 800;
+    font-family: Arial, Helvetica, sans-serif;
+    color: rgba(255, 255, 255, 0.15);
+    transition: var(--transition-smooth);
+}
+.player-card:hover .jersey-num {
+    color: var(--barca-gold);
+    transform: scale(1.1);
+}
+
+.player-details {
+    flex-grow: 1;
+    margin-left: 20px;
+}
+
+.player-details h3 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.player-pos {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+}
+
+.image-count {
+    font-size: 0.8rem;
+    margin-top: 5px;
+    color: var(--barca-gold);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* Upload input */
+.upload-btn-wrapper {
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-upload {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    cursor: pointer;
+    transition: var(--transition-smooth);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.btn-upload:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.train-upload-input {
+    font-size: 100px;
+    position: absolute;
+    left: 0;
+    top: 0;
+    opacity: 0;
+    cursor: pointer;
+}
+
+/* Hyperparams */
+.hyperparams-section {
+    border-top: 1px solid var(--border-color);
+    padding-top: 15px;
+    margin-top: 5px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.hyperparams-section h3 {
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.params-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1.2fr;
+    gap: 10px;
+}
+
+.param-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.param-group label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.param-group input, .param-group select {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    padding: 8px;
+    border-radius: 8px;
+    color: white;
+    font-family: inherit;
+    font-size: 0.8rem;
+    outline: none;
+    transition: var(--transition-smooth);
+}
+
+.param-group input:focus, .param-group select:focus {
+    border-color: var(--barca-gold);
+}
+
+/* Training progress dashboard */
+.training-console {
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 12px;
+    padding: 15px;
+    border: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.training-console.inactive {
+    opacity: 0.6;
+}
+
+.status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.status-pulse {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--text-secondary);
+}
+
+.training-console:not(.inactive) .status-pulse {
+    background-color: #ef4444;
+    box-shadow: 0 0 8px #ef4444;
+    animation: pulse 1.2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+    70% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); }
+    100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+.progress-bar-container {
+    height: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 3px;
+    overflow: hidden;
+}
+
+.progress-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--barca-blue), var(--barca-red));
+    width: 0%;
+    transition: width 0.3s ease;
+}
+
+.metrics-summary {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+}
+
+.metric-box {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 8px 4px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.metric-label {
+    font-size: 0.65rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+}
+
+.metric-val {
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--barca-gold);
+}
+
+.chart-container {
+    flex-grow: 1;
+    min-height: 250px;
+    position: relative;
+}
+
+/* Inference sandbox */
+.inference-sandbox {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.drop-zone {
+    border: 2px dashed rgba(255, 255, 255, 0.15);
+    border-radius: 12px;
+    padding: 30px 15px;
+    text-align: center;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    position: relative;
+    overflow: hidden;
+    min-height: 160px;
+}
+
+.drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--barca-blue);
+    background: rgba(0, 77, 152, 0.05);
+}
+
+.drop-icon {
+    font-size: 2.2rem;
+    color: var(--text-secondary);
+    transition: var(--transition-smooth);
+}
+.drop-zone:hover .drop-icon {
+    color: var(--barca-gold);
+    transform: scale(1.1);
+}
+
+.drop-zone p {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.drop-zone p span {
+    color: var(--barca-gold);
+    font-weight: 600;
+}
+
+.preview-img {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #0f1322;
+    top: 0;
+    left: 0;
+    display: none;
+}
+
+.url-input-row {
+    display: flex;
+    gap: 8px;
+}
+
+.url-input-row input {
+    flex-grow: 1;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid var(--border-color);
+    padding: 10px 14px;
+    border-radius: 8px;
+    color: white;
+    font-family: inherit;
+    font-size: 0.8rem;
+    outline: none;
+}
+
+.url-input-row input:focus {
+    border-color: var(--barca-blue);
+}
+
+/* Prediction results */
+.prediction-results {
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.prediction-results h3 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 8px;
+}
+
+.placeholder-text {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    text-align: center;
+    padding: 10px 0;
+}
+
+.prediction-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.prediction-info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.player-name-label {
+    text-transform: capitalize;
+}
+
+.prediction-conf-val {
+    color: var(--barca-gold);
+}
+
+.prediction-bar-container {
+    height: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.prediction-bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    width: 0%;
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.pred-messi { background: linear-gradient(90deg, var(--barca-blue), #1d4ed8); }
+.pred-yamal { background: linear-gradient(90deg, var(--barca-red), #e11d48); }
+.pred-lewandowski { background: linear-gradient(90deg, var(--barca-gold), #facc15); }
+
+/* Activation maps */
+.activation-maps-section {
+    border-top: 1px solid var(--border-color);
+    padding-top: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.activation-maps-section h3 {
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.activation-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    padding: 8px;
+    min-height: 120px;
+}
+
+.placeholder-maps {
+    grid-column: span 4;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    color: var(--text-secondary);
+    font-size: 0.8rem;
+    padding: 20px 0;
+}
+
+.placeholder-maps i {
+    font-size: 1.8rem;
+}
+
+.activation-map-img {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 6px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    object-fit: cover;
+    transition: var(--transition-smooth);
+}
+
+.activation-map-img:hover {
+    transform: scale(1.1);
+    z-index: 10;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    border-color: var(--barca-gold);
+}
+
+/* Toast */
+.toast {
+    position: fixed;
+    bottom: 25px;
+    right: 25px;
+    background: rgba(18, 25, 47, 0.9);
+    border: 1px solid var(--barca-gold);
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    transform: translateY(100px);
+    opacity: 0;
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s;
+    z-index: 9999;
+}
+
+.toast.show {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+/* Footer */
+.app-footer {
+    text-align: center;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    padding: 10px 0;
+    border-top: 1px solid var(--border-color);
+    margin-top: auto;
+}
