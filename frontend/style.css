@@ -189,6 +189,7 @@ body {
     gap: 15px;
     overflow: hidden;
     position: relative;
+    min-width: 0; /* Respect parent flex/grid column width constraints */
 }
 
 .card-header {
@@ -800,6 +801,9 @@ body {
 .dashboard-grid.mode-predict {
     grid-template-columns: 1fr 1fr;
     align-items: stretch;
+}
+.dashboard-grid.mode-predict.has-prediction {
+    align-items: start;
 }
 .dashboard-grid.mode-predict .left-panel {
     display: none !important;

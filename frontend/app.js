@@ -250,7 +250,7 @@ function switchTab(tabName) {
     tabPredict.classList.remove('active');
     tabModels.classList.remove('active');
     
-    dashboardGrid.classList.remove('mode-predict', 'mode-edit', 'mode-manager');
+    dashboardGrid.classList.remove('mode-predict', 'mode-edit', 'mode-manager', 'has-prediction');
     
     if (tabName === 'predict') {
         tabPredict.classList.add('active');
@@ -284,6 +284,7 @@ async function loadActiveSessionAndInit() {
 }
 
 async function loadSessionMetadata(sessionId) {
+    dashboardGrid.classList.remove('has-prediction');
     try {
         const res = await fetch(`/api/sessions`);
         const sessions = await res.json();
@@ -853,6 +854,7 @@ function loadTestImageFromUrl() {
 }
 
 async function predictImageFile(file) {
+    dashboardGrid.classList.remove('has-prediction');
     const formData = new FormData();
     formData.append('file', file);
     
@@ -878,6 +880,7 @@ async function predictImageFile(file) {
             }
             renderPredictions(data.predictions);
             renderActivationMaps(data.activation_maps);
+            dashboardGrid.classList.add('has-prediction');
         } else {
             resultsList.innerHTML = `<p class="placeholder-text" style="color:#ef4444;"><i class="fa-solid fa-triangle-exclamation"></i> ${data.error || 'Prediction failed'}</p>`;
         }
