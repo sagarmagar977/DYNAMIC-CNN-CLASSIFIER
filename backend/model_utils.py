@@ -959,7 +959,6 @@ def train_cnn_model(epochs=5, batch_size=4):
         return False
     finally:
         try:
-            import tensorflow as tf
             tf.keras.backend.clear_session()
             print("Cleared Keras session memory cache.")
         except Exception as ce:
