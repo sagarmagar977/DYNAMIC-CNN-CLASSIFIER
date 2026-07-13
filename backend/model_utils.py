@@ -279,46 +279,83 @@ def auto_migrate_legacy_dataset():
             for s_id in os.listdir(SESSIONS_DIR):
                 sess_path = os.path.join(SESSIONS_DIR, s_id)
                 if os.path.isdir(sess_path) and s_id != "barca_players":
-                    db_res = supabase.table("sessions").select("*").eq("id", s_id).execute()
                     meta_path = os.path.join(sess_path, "metadata.json")
-                    if not db_res.data and os.path.exists(meta_path):
-                        try:
-                            with open(meta_path, 'r') as f:
-                                meta = json.load(f)
+                    if not os.path.exists(meta_path):
+                        continue
+                        
+                    try:
+                        with open(meta_path, 'r') as f:
+                            meta = json.load(f)
+                    except Exception as e:
+                        print(f"Error reading metadata for session {s_id}: {e}")
+                        continue
+
+                    # Migrate metadata to Supabase DB if not already present
+                    try:
+                        db_res = supabase.table("sessions").select("*").eq("id", s_id).execute()
+                        if not db_res.data:
                             supabase.table("sessions").insert(meta).execute()
                             print(f"Migrated metadata for session '{s_id}' to Supabase DB.")
-                        except Exception as e:
-                            print(f"Error migrating metadata for session {s_id}: {e}")
+                    except Exception as e:
+                        print(f"Error migrating metadata for session {s_id}: {e}")
 
+                    # List existing folders in Supabase Storage to check which folders are already uploaded
                     try:
-                        sess_files = supabase.storage.from_("datasets").list(s_id)
+                        sess_files = supabase.storage.from_("datasets").list(s_id, {"limit": 1000})
+                        uploaded_folders = {f["name"]: f for f in sess_files if f.get("metadata") is None}
                     except Exception:
+                        uploaded_folders = {}
                         sess_files = []
 
-                    if not sess_files or len(sess_files) == 0:
-                        sess_dataset_dir = os.path.join(sess_path, "dataset")
-                        if os.path.exists(sess_dataset_dir):
-                            print(f"Migrating dataset images for session '{s_id}' to Supabase Storage...")
-                            for c_name in os.listdir(sess_dataset_dir):
-                                class_folder = os.path.join(sess_dataset_dir, c_name)
-                                if os.path.isdir(class_folder):
-                                    for filename in os.listdir(class_folder):
-                                        filepath = os.path.join(class_folder, filename)
-                                        if filename.lower().endswith(('.jpg', '.jpeg', '.png')):
-                                            clean_name = sanitize_filename(filename)
-                                            destination = f"{s_id}/{c_name}/{clean_name}"
-                                            try:
-                                                with open(filepath, 'rb') as fd:
-                                                    supabase.storage.from_("datasets").upload(
-                                                        path=destination,
-                                                        file=fd.read(),
-                                                        file_options={"content-type": "image/jpeg" if filename.lower().endswith(('.jpg', '.jpeg')) else "image/png"}
-                                                    )
-                                            except Exception as ue:
-                                                print(f"Failed to upload {filename} in session {s_id}: {ue}")
+                    sess_dataset_dir = os.path.join(sess_path, "dataset")
+                    if os.path.exists(sess_dataset_dir):
+                        for c_name in os.listdir(sess_dataset_dir):
+                            # ONLY migrate folders whose name is listed in the session's active classes
+                            if c_name not in meta.get("classes", []):
+                                continue
 
-                        sess_templates = os.path.join(sess_path, "master_templates.json")
-                        if os.path.exists(sess_templates):
+                            local_class_folder = os.path.join(sess_dataset_dir, c_name)
+                            if not os.path.isdir(local_class_folder):
+                                continue
+
+                            local_img_count = len([x for x in os.listdir(local_class_folder) if x.lower().endswith(('.jpg', '.jpeg', '.png'))])
+
+                            # Compare local file count with what's in Supabase to detect partial uploads
+                            if c_name in uploaded_folders:
+                                try:
+                                    remote_files = supabase.storage.from_("datasets").list(f"{s_id}/{c_name}", {"limit": 1000})
+                                    remote_count = len([x for x in remote_files if x.get("metadata") is not None])
+                                except Exception:
+                                    remote_count = 0
+                                if remote_count >= local_img_count:
+                                    continue  # Already fully uploaded
+
+                            print(f"Migrating missing/partial class '{c_name}' in session '{s_id}' to Supabase Storage...")
+                            for filename in os.listdir(local_class_folder):
+                                filepath = os.path.join(local_class_folder, filename)
+                                if filename.lower().endswith(('.jpg', '.jpeg', '.png')):
+                                    clean_name = sanitize_filename(filename)
+                                    destination = f"{s_id}/{c_name}/{clean_name}"
+                                    try:
+                                        with open(filepath, 'rb') as fd:
+                                            supabase.storage.from_("datasets").upload(
+                                                path=destination,
+                                                file=fd.read(),
+                                                file_options={"content-type": "image/jpeg" if filename.lower().endswith(('.jpg', '.jpeg')) else "image/png", "upsert": "true"}
+                                            )
+                                    except Exception as ue:
+                                        print(f"Failed to upload {filename} in session {s_id}: {ue}")
+
+                    sess_templates = os.path.join(sess_path, "master_templates.json")
+                    if os.path.exists(sess_templates):
+                        # Verify if templates are already uploaded
+                        templates_uploaded = False
+                        if sess_files:
+                            for f in sess_files:
+                                if f["name"] == "master_templates.json":
+                                    templates_uploaded = True
+                                    break
+                        if not templates_uploaded:
                             try:
                                 with open(sess_templates, 'rb') as f:
                                     supabase.storage.from_("datasets").upload(
@@ -326,6 +363,7 @@ def auto_migrate_legacy_dataset():
                                         file=f.read(),
                                         file_options={"content-type": "application/json", "upsert": "true"}
                                     )
+                                print(f"Migrated master_templates.json for session '{s_id}' to Supabase Storage.")
                             except Exception as te:
                                 print(f"Failed to upload templates for session {s_id}: {te}")
                             print(f"Migration for session '{s_id}' complete!")

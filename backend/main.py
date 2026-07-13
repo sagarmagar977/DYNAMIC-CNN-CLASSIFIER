@@ -346,8 +346,40 @@ def update_session_classes(session_id: str, data: SessionClassesSchema):
     if not details:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found.")
     try:
+        old_classes = details.get("classes", [])
+        new_classes = data.classes
+
         if supabase is not None:
-            res = supabase.table("sessions").update({"classes": data.classes}).eq("id", session_id).execute()
+            # Rename storage folders when class names change
+            for old_name, new_name in zip(old_classes, new_classes):
+                if old_name != new_name:
+                    try:
+                        old_prefix = f"{session_id}/{old_name}"
+                        new_prefix = f"{session_id}/{new_name}"
+                        files = supabase.storage.from_("datasets").list(old_prefix, {"limit": 1000})
+                        for f_info in files:
+                            fname = f_info.get("name")
+                            if not fname:
+                                continue
+                            old_path = f"{old_prefix}/{fname}"
+                            new_path = f"{new_prefix}/{fname}"
+                            try:
+                                file_bytes = supabase.storage.from_("datasets").download(old_path)
+                                if file_bytes:
+                                    mime = "image/png" if fname.lower().endswith(".png") else "image/jpeg"
+                                    supabase.storage.from_("datasets").upload(
+                                        path=new_path,
+                                        file=file_bytes,
+                                        file_options={"content-type": mime, "upsert": "true"}
+                                    )
+                                    supabase.storage.from_("datasets").remove([old_path])
+                            except Exception:
+                                pass
+                        print(f"Renamed class storage folder: '{old_name}' -> '{new_name}' in session '{session_id}'")
+                    except Exception as re:
+                        print(f"Warning: Could not rename storage folder for class '{old_name}': {re}")
+
+            res = supabase.table("sessions").update({"classes": new_classes}).eq("id", session_id).execute()
             if res.data:
                 import model_utils
                 model_utils._active_session_id = None
