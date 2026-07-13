@@ -741,15 +741,7 @@ def create_model():
     for layer in base_model.layers:
         layer.trainable = False
         
-    inputs = base_model.input
-    x = base_model.output[0]
-    outputs = tf.keras.layers.Dense(512, activation=None, name='embedding_projection_512')(x)
-    model = tf.keras.Model(inputs=inputs, outputs=outputs, name='projected_MobileFaceNet')
-    
-    for layer in model.layers:
-        layer.trainable = False
-        
-    return model
+    return base_model
 
 def load_dataset_data():
     active_id, active_classes, _ = get_active_session_details()
