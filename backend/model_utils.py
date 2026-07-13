@@ -73,53 +73,62 @@ _active_session_id = None
 
 def get_active_session_details():
     global _active_session_id
+    import time
 
 
     if _active_session_id is not None:
+        for attempt in range(3):
+            try:
+                res = supabase.table("sessions").select("*").eq("id", _active_session_id).execute()
+                if res.data:
+                    sess = res.data[0]
+                    return sess["id"], sess["classes"], os.path.join(SESSIONS_DIR, sess["id"])
+                break
+            except Exception as e:
+                print(f"Error getting active session details by id (attempt {attempt+1}/3): {e}")
+                if attempt < 2:
+                    time.sleep(0.5)
+
+    for attempt in range(3):
         try:
-            res = supabase.table("sessions").select("*").eq("id", _active_session_id).execute()
+            res = supabase.table("sessions").select("*").eq("is_active", True).execute()
             if res.data:
                 sess = res.data[0]
+                _active_session_id = sess["id"]
                 return sess["id"], sess["classes"], os.path.join(SESSIONS_DIR, sess["id"])
-        except Exception:
-            pass
 
-    try:
-        res = supabase.table("sessions").select("*").eq("is_active", True).execute()
-        if res.data:
-            sess = res.data[0]
-            _active_session_id = sess["id"]
-            return sess["id"], sess["classes"], os.path.join(SESSIONS_DIR, sess["id"])
+            res = supabase.table("sessions").select("*").execute()
+            if res.data:
+                sess = res.data[0]
+                supabase.table("sessions").update({"is_active": True}).eq("id", sess["id"]).execute()
+                _active_session_id = sess["id"]
+                return sess["id"], sess["classes"], os.path.join(SESSIONS_DIR, sess["id"])
 
-        res = supabase.table("sessions").select("*").execute()
-        if res.data:
-            sess = res.data[0]
-            supabase.table("sessions").update({"is_active": True}).eq("id", sess["id"]).execute()
-            _active_session_id = sess["id"]
-            return sess["id"], sess["classes"], os.path.join(SESSIONS_DIR, sess["id"])
-
-        active_id = "barca_players"
-        classes = ["messi", "yamal", "lewandowski"]
-        meta = {
-            "id": active_id,
-            "display_name": "Barcelona Players",
-            "classes": classes,
-            "status": "untrained",
-            "is_active": True,
-            "history": {
-                "loss": [],
-                "accuracy": [],
-                "val_loss": [],
-                "val_accuracy": []
+            active_id = "barca_players"
+            classes = ["messi", "yamal", "lewandowski"]
+            meta = {
+                "id": active_id,
+                "display_name": "Barcelona Players",
+                "classes": classes,
+                "status": "untrained",
+                "is_active": True,
+                "history": {
+                    "loss": [],
+                    "accuracy": [],
+                    "val_loss": [],
+                    "val_accuracy": []
+                }
             }
-        }
-        supabase.table("sessions").insert(meta).execute()
-        _active_session_id = active_id
-        return active_id, classes, os.path.join(SESSIONS_DIR, active_id)
-    except Exception as e:
-        print(f"Warning: Database error in get_active_session_details: {e}")
-        session_dir = os.path.join(SESSIONS_DIR, "barca_players")
-        return "barca_players", ["messi", "yamal", "lewandowski"], session_dir
+            supabase.table("sessions").insert(meta).execute()
+            _active_session_id = active_id
+            return active_id, classes, os.path.join(SESSIONS_DIR, active_id)
+        except Exception as e:
+            print(f"Warning: Database error in get_active_session_details (attempt {attempt+1}/3): {e}")
+            if attempt < 2:
+                time.sleep(0.5)
+            else:
+                session_dir = os.path.join(SESSIONS_DIR, "barca_players")
+                return "barca_players", ["messi", "yamal", "lewandowski"], session_dir
 
 def get_active_classes():
     _, classes, _ = get_active_session_details()
@@ -188,12 +197,17 @@ def list_sessions():
 
 def get_session_details(session_id):
     if supabase is not None:
-        try:
-            res = supabase.table("sessions").select("*").eq("id", session_id).execute()
-            if res.data:
-                return res.data[0]
-        except Exception as e:
-            print(f"Error getting session details: {e}")
+        import time
+        for attempt in range(3):
+            try:
+                res = supabase.table("sessions").select("*").eq("id", session_id).execute()
+                if res.data:
+                    return res.data[0]
+                return None
+            except Exception as e:
+                print(f"Error getting session details (attempt {attempt+1}/3): {e}")
+                if attempt < 2:
+                    time.sleep(0.5)
     return None
 
 def download_session_dataset_to_temp(session_id):
