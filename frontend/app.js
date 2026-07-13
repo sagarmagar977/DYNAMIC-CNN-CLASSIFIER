@@ -20,6 +20,8 @@ let activeTab = 'predict';
 let currentSessionId = 'barca_players';
 let sessionMetadata = null;
 let sessionsList = [];
+let isDraftSession = false;
+let draftSessionData = null;
 
 const dashboardGrid = document.getElementById('dashboard-grid');
 const modelStatusBadge = document.getElementById('model-status-badge');
@@ -269,6 +271,8 @@ function switchTab(tabName) {
 }
 
 async function loadActiveSessionAndInit() {
+    isDraftSession = false;
+    draftSessionData = null;
     try {
         const res = await fetch('/api/dataset-info');
         const data = await res.json();
@@ -512,6 +516,18 @@ function renderClassCards(classes) {
 
 async function updateClassImageCounts() {
     if (!sessionMetadata) return;
+    if (isDraftSession) {
+        for (const className of sessionMetadata.classes) {
+            const key = className.toLowerCase().replace(/[^a-z0-9]/g, '_');
+            const countEl = document.getElementById(`count-${key}`);
+            if (countEl) {
+                countEl.textContent = 0;
+            }
+        }
+        btnTrainModel.disabled = true;
+        btnTrainModel.title = "Upload at least 1 image per class before training.";
+        return;
+    }
     try {
         const info = {};
         for (const className of sessionMetadata.classes) {
@@ -541,6 +557,17 @@ async function updateClassImageCounts() {
 async function updateSessionConfig() {
     const newName = sessionDisplayNameInput.value.trim();
     if (!newName || newName === sessionMetadata.display_name) return;
+    
+    if (isDraftSession && draftSessionData) {
+        draftSessionData.display_name = newName;
+        sessionMetadata.display_name = newName;
+        const activeSessionIndicator = document.getElementById('active-session-name-indicator');
+        if (activeSessionIndicator) {
+            activeSessionIndicator.textContent = newName;
+        }
+        showToast(`Draft session display name updated to: ${newName}`);
+        return;
+    }
     
     try {
         const res = await fetch(`/api/sessions/${currentSessionId}/rename`, {
@@ -587,6 +614,14 @@ async function handleClassesCountChange() {
 }
 
 async function saveSessionClasses(newClasses) {
+    if (isDraftSession && draftSessionData) {
+        draftSessionData.classes = newClasses;
+        sessionMetadata.classes = newClasses;
+        renderClassCards(newClasses);
+        await updateClassImageCounts();
+        showToast("Draft session class list updated.");
+        return;
+    }
     try {
         const res = await fetch(`/api/sessions/${currentSessionId}/classes`, {
             method: 'POST',
@@ -634,6 +669,14 @@ function handleClassFileUpload(e) {
 }
 
 async function triggerBatchUpload(className, filesList) {
+    if (isDraftSession) {
+        const committed = await commitDraftSession();
+        if (!committed) {
+            showToast("Failed to initialize session. Upload aborted.");
+            return;
+        }
+    }
+
     const key = className.toLowerCase().replace(/[^a-z0-9]/g, '_');
     const container = document.getElementById(`progress-container-${key}`);
     const textEl = document.getElementById(`progress-text-${key}`);
@@ -1011,47 +1054,87 @@ async function handleActivateSession(sessionId) {
 }
 
 async function handleEditSession(sessionId) {
+    isDraftSession = false;
+    draftSessionData = null;
     showToast(`Loading details for: ${sessionId}`);
     await loadSessionMetadata(sessionId);
     switchTab('edit');
 }
 
-async function handleCreateNewSession() {
-    showToast("Creating new session profile...");
+async function commitDraftSession() {
+    if (!isDraftSession || !draftSessionData) return true;
     
-    const timestamp = Date.now();
-    const id = `session_${timestamp}`;
-    const name = `New Session ${new Date().toLocaleDateString()}`;
-    
+    showToast("Initializing session profile in database...");
     try {
         const res = await fetch('/api/sessions', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                id: id,
-                display_name: name,
-                classes: ["Class 1", "Class 2", "Class 3"]
+                id: draftSessionData.id,
+                display_name: draftSessionData.display_name,
+                classes: draftSessionData.classes
             })
         });
         
         if (res.ok) {
             const data = await res.json();
-            showToast("New session profile allocated. Switched to editor.");
-            await loadSessionMetadata(data.id);
-            switchTab('edit');
-            
-            setTimeout(() => {
-                sessionDisplayNameInput.focus();
-                sessionDisplayNameInput.select();
-            }, 100);
+            isDraftSession = false;
+            sessionMetadata = data;
+            currentSessionId = data.id;
+            showToast("Session profile saved to database.");
+            return true;
         } else {
             const err = await res.json();
-            showToast(`Failed to create session: ${err.detail || 'Unknown error'}`);
+            showToast(`Failed to initialize session: ${err.detail || 'Unknown error'}`);
+            return false;
         }
     } catch (e) {
         console.error(e);
-        showToast("Error creating session profile.");
+        showToast("Error connecting to database.");
+        return false;
     }
+}
+
+async function handleCreateNewSession() {
+    showToast("New draft session profile created. Switched to editor.");
+    
+    isDraftSession = true;
+    const timestamp = Date.now();
+    const id = `session_${timestamp}`;
+    const name = `New Session ${new Date().toLocaleDateString()}`;
+    const classes = ["Class 1", "Class 2", "Class 3"];
+    
+    draftSessionData = {
+        id: id,
+        display_name: name,
+        classes: classes,
+        status: "untrained",
+        is_active: false,
+        history: { loss: [], accuracy: [], val_loss: [], val_accuracy: [] }
+    };
+    
+    currentSessionId = id;
+    sessionMetadata = draftSessionData;
+    
+    const activeSessionIndicator = document.getElementById('active-session-name-indicator');
+    if (activeSessionIndicator) {
+        activeSessionIndicator.textContent = name;
+    }
+
+    sessionDisplayNameInput.value = name;
+    sessionClassesCountInput.value = classes.length;
+    
+    renderClassCards(classes);
+    await updateClassImageCounts();
+    updateChartHistory(draftSessionData.history);
+    updateStatusBadge(draftSessionData.status);
+    
+    switchTab('edit');
+    
+    setTimeout(() => {
+        sessionDisplayNameInput.focus();
+        sessionDisplayNameInput.select();
+    }, 100);
 }
 
 function handleExportSession(sessionId) {
