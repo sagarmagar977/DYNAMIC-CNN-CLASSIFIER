@@ -26,13 +26,17 @@ from supabase import create_client, Client
 supabase_url = os.environ.get("SUPABASE_URL", "")
 supabase_key = os.environ.get("SUPABASE_KEY", "")
 
-supabase: Client = None
-if supabase_url and supabase_key and "your-project-id" not in supabase_url:
-    try:
-        supabase = create_client(supabase_url, supabase_key)
-        print("Successfully initialized Supabase Client.")
-    except Exception as e:
-        print(f"Warning: Could not connect to Supabase: {e}")
+if not supabase_url or not supabase_key or "your-project-id" in supabase_url:
+    raise RuntimeError(
+        "Supabase credentials (SUPABASE_URL and SUPABASE_KEY) are missing or invalid in your environmental variables or .env file. "
+        "Supabase is strictly required to run this project. Please configure it to continue."
+    )
+
+try:
+    supabase = create_client(supabase_url, supabase_key)
+    print("Successfully initialized Supabase Client.")
+except Exception as e:
+    raise RuntimeError(f"Failed to connect to Supabase: {e}")
 
 IMG_SIZE = (112, 112)
 CLASSES = ["messi", "yamal", "lewandowski"]
@@ -53,9 +57,7 @@ _active_session_id = None
 
 def get_active_session_details():
     global _active_session_id
-    if supabase is None:
-        session_dir = os.path.join(SESSIONS_DIR, "barca_players")
-        return "barca_players", ["messi", "yamal", "lewandowski"], session_dir
+
 
     if _active_session_id is not None:
         try:
@@ -181,11 +183,6 @@ def get_session_details(session_id):
 def download_session_dataset_to_temp(session_id):
     temp_dir = tempfile.TemporaryDirectory()
     local_path = temp_dir.name
-    if supabase is None:
-        local_src = os.path.join(SESSIONS_DIR, session_id, "dataset")
-        if os.path.exists(local_src):
-            shutil.copytree(local_src, os.path.join(local_path, "dataset"), dirs_exist_ok=True)
-        return temp_dir, os.path.join(local_path, "dataset")
     try:
         active_classes = get_active_classes()
         for class_name in active_classes:
