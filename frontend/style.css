@@ -799,7 +799,7 @@ body {
 
 .dashboard-grid.mode-predict {
     grid-template-columns: 1fr 1fr;
-    align-items: start;
+    align-items: stretch;
 }
 .dashboard-grid.mode-predict .left-panel {
     display: none !important;
@@ -1291,4 +1291,10 @@ body {
     .action-bar {
         padding: 5px 0 !important;
     }
+    
+    .metrics-summary {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 8px !important;
+    }
 }
+
