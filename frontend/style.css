@@ -799,6 +799,7 @@ body {
 
 .dashboard-grid.mode-predict {
     grid-template-columns: 1fr 1fr;
+    align-items: start;
 }
 .dashboard-grid.mode-predict .left-panel {
     display: none !important;
@@ -823,6 +824,7 @@ body {
 
 .dashboard-grid.mode-edit {
     grid-template-columns: 1.1fr 0.9fr 1fr;
+    align-items: start;
 }
 .dashboard-grid.mode-edit .left-panel {
     display: flex !important;
