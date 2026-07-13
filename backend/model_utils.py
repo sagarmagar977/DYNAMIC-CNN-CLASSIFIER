@@ -1,8 +1,24 @@
 import os
+# Reduce TensorFlow memory footprint on RAM-constrained servers (like Render 512MB free tier)
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"          # Disable GPU checks
+os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"          # Disable oneDNN scratch buffers
+os.environ["TF_NUM_INTRAOP_THREADS"] = "1"         # Limit CPU execution threads
+os.environ["TF_NUM_INTEROP_THREADS"] = "1"         # Limit CPU scheduling threads
+os.environ["OMP_NUM_THREADS"] = "1"
+os.environ["MKL_NUM_THREADS"] = "1"
+
 import json
 import base64
 import numpy as np
 import tensorflow as tf
+
+# Programmatically limit Keras/TF threading pools immediately after import
+try:
+    tf.config.threading.set_intra_op_parallelism_threads(1)
+    tf.config.threading.set_inter_op_parallelism_threads(1)
+except Exception as e:
+    print(f"Warning: Could not set TensorFlow threading limits: {e}")
+
 from tensorflow.keras.models import Sequential, load_model
 from tensorflow.keras.layers import Dense, Dropout, GlobalAveragePooling2D
 from tensorflow.keras.preprocessing.image import img_to_array, load_img
@@ -811,6 +827,8 @@ def compute_master_templates():
             temp_dir.cleanup()
         except Exception:
             pass
+        import gc
+        gc.collect()
 
 def train_cnn_model(epochs=5, batch_size=4):
     global _master_templates
@@ -1022,6 +1040,9 @@ def run_inference(image_bytes):
         }
     except Exception as e:
         return {"error": f"Error running inference: {str(e)}"}
+    finally:
+        import gc
+        gc.collect()
 
 def extract_activation_maps(image_bytes):
     """Extracts output activations of the first convolutional layer (16 filters) of the base MobileNetV2 model."""
@@ -1088,3 +1109,6 @@ def extract_activation_maps(image_bytes):
     except Exception as e:
         print(f"Error extracting activation maps: {e}")
         return None
+    finally:
+        import gc
+        gc.collect()
