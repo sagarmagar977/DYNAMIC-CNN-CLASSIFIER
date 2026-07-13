@@ -206,6 +206,14 @@ def download_session_dataset_to_temp(session_id):
         print(f"Error downloading session dataset from Supabase: {e}")
         return temp_dir, local_path
 
+def sanitize_filename(filename: str) -> str:
+    import re
+    name, ext = os.path.splitext(filename)
+    clean_name = re.sub(r'[^a-zA-Z0-9_-]', '_', name)
+    if not clean_name:
+        clean_name = "file"
+    return f"{clean_name}{ext.lower()}"
+
 def auto_migrate_legacy_dataset():
     if supabase is None:
         return
@@ -242,7 +250,8 @@ def auto_migrate_legacy_dataset():
                         for filename in os.listdir(class_path):
                             file_path = os.path.join(class_path, filename)
                             if filename.lower().endswith(('.jpg', '.jpeg', '.png')):
-                                destination = f"barca_players/{class_name}/{filename}"
+                                clean_name = sanitize_filename(filename)
+                                destination = f"barca_players/{class_name}/{clean_name}"
                                 try:
                                     with open(file_path, 'rb') as file_data:
                                         supabase.storage.from_("datasets").upload(

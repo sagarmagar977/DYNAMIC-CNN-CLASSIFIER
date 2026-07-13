@@ -532,8 +532,10 @@ async def import_session(file: UploadFile = File(...)):
                             img_path = os.path.join(class_folder, img_name)
                             try:
                                 with open(img_path, 'rb') as img_data:
+                                    from model_utils import sanitize_filename
+                                    clean_img_name = sanitize_filename(img_name)
                                     supabase.storage.from_("datasets").upload(
-                                        path=f"{session_id}/{class_name}/{img_name}",
+                                        path=f"{session_id}/{class_name}/{clean_img_name}",
                                         file=img_data.read(),
                                         file_options={"content-type": "image/jpeg" if img_name.lower().endswith(('.jpg', '.jpeg')) else "image/png"}
                                     )
