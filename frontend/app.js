@@ -1,5 +1,8 @@
 
-const API_BASE = ""; 
+const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+    ? ''
+    : 'https://whoamicnn.onrender.com'; // Change this to your live Render backend URL if different
+
 if (API_BASE) {
     const originalFetch = window.fetch;
     window.fetch = function(input, init) {
