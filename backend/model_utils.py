@@ -136,7 +136,11 @@ def activate_session(session_id):
     global _active_session_id, _master_templates, _loaded_templates_session_id
     if supabase is not None:
         try:
-            supabase.table("sessions").update({"is_active": False}).neq("id", "dummy").execute()
+            res = supabase.table("sessions").select("id").execute()
+            if res.data:
+                for s in res.data:
+                    if s["id"] != session_id:
+                        supabase.table("sessions").update({"is_active": False}).eq("id", s["id"]).execute()
             supabase.table("sessions").update({"is_active": True}).eq("id", session_id).execute()
         except Exception as e:
             print(f"Error setting active session in database: {e}")
