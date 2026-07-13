@@ -41,8 +41,14 @@ def startup_event():
     import threading
 
     def _init_background():
-        from model_utils import get_model, compute_master_templates, MODEL_PATH, auto_migrate_legacy_dataset
+        from model_utils import get_model, compute_master_templates, MODEL_PATH, auto_migrate_legacy_dataset, _load_initial_templates
         import os
+
+        print("Loading master templates...")
+        try:
+            _load_initial_templates()
+        except Exception as e:
+            print(f"Warning: Could not load initial templates: {e}")
 
         print("Running auto-migration of legacy dataset...")
         try:

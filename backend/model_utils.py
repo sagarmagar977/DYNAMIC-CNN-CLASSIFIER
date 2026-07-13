@@ -387,17 +387,21 @@ def auto_migrate_legacy_dataset():
 active_id, active_classes, session_dir = get_active_session_details()
 _master_templates = {}
 _loaded_templates_session_id = None
-if supabase is not None:
-    try:
-        res = supabase.storage.from_("datasets").download(f"{active_id}/master_templates.json")
-        if res:
-            _master_templates = json.loads(res.decode('utf-8'))
-            _loaded_templates_session_id = active_id
-            print(f"Successfully loaded cached master templates from Supabase Storage for active session: {active_id}.")
-    except Exception as e:
-        print(f"Warning: Could not load master templates from Supabase Storage: {e}")
 
-if not _master_templates:
+def _load_initial_templates():
+    """Load master templates from Supabase or disk — called lazily, not at import time."""
+    global _master_templates, _loaded_templates_session_id
+    if supabase is not None:
+        try:
+            res = supabase.storage.from_("datasets").download(f"{active_id}/master_templates.json")
+            if res:
+                _master_templates = json.loads(res.decode('utf-8'))
+                _loaded_templates_session_id = active_id
+                print(f"Successfully loaded cached master templates from Supabase Storage for active session: {active_id}.")
+                return
+        except Exception as e:
+            print(f"Warning: Could not load master templates from Supabase Storage: {e}")
+
     active_templates_path = os.path.join(session_dir, "master_templates.json")
     if os.path.exists(active_templates_path):
         try:
