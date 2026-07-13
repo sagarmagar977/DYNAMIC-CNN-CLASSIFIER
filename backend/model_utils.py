@@ -577,10 +577,10 @@ def get_model():
                     print(f"Loading trained model from disk: {MODEL_PATH}")
                     try:
                         temp_model = load_model(MODEL_PATH, safe_mode=False)
-                        if temp_model.output_shape[-1] == 512:
+                        if temp_model.output_shape[-1] == 256:
                             _model_cache = temp_model
                             loaded_ok = True
-                            print("Loaded valid 512-D feature extractor model from disk.")
+                            print("Loaded valid 256-D feature extractor model from disk.")
                         else:
                             print(f"Discarding saved model because of output shape mismatch: {temp_model.output_shape}")
                             try:
@@ -595,7 +595,7 @@ def get_model():
                     _model_cache = create_model()
                     try:
                         _model_cache.save(MODEL_PATH)
-                        print(f"Saved rebuilt 512-D feature extractor model to {MODEL_PATH}")
+                        print(f"Saved rebuilt 256-D feature extractor model to {MODEL_PATH}")
                     except Exception as e:
                         print(f"Warning: Could not save model to disk: {e}")
     return _model_cache
@@ -899,7 +899,7 @@ def train_cnn_model(epochs=5, batch_size=4):
                     avg_vector = np.mean(class_vectors, axis=0)
                     fold_templates[class_idx] = l2_normalize(avg_vector)
                 else:
-                    fold_templates[class_idx] = np.zeros(512)
+                    fold_templates[class_idx] = np.zeros(X.shape[1])
             train_correct = 0
             train_loss_sum = 0.0
             for vec, label_idx in zip(X_train, y_train):
