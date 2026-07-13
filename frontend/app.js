@@ -1,7 +1,6 @@
-
-const API_BASE = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+const API_BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname.includes('.hf.space') || window.location.hostname.includes('.onrender.com'))
     ? ''
-    : 'https://whoamicnn.onrender.com'; // Change this to your live Render backend URL if different
+    : 'https://dynamic-cnn-classifier.onrender.com'; // Change this to your live backend URL if serving frontend separately
 
 if (API_BASE) {
     const originalFetch = window.fetch;
