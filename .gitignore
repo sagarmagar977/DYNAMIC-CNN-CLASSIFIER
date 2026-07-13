@@ -27,3 +27,7 @@ Thumbs.db
 *.pt
 *.pth
 *.pkl
+
+# Secrets and Environment Variables
+.env
+backend/.env

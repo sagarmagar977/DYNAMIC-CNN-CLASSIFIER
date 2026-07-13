@@ -1,21 +1,22 @@
 import os
 import json
 import shutil
-from fastapi import FastAPI, BackgroundTasks, UploadFile, File, Form, HTTPException
+import tempfile
+import zipfile
+import time
+from fastapi import FastAPI, BackgroundTasks, UploadFile, File, Form, HTTPException, Response
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, validator
 from typing import List, Optional
-import time
-import zipfile
 
 from dataset_prep import prepare_dataset, DATASET_DIR, PLAYERS
 from model_utils import (
     train_cnn_model, run_inference, extract_activation_maps, STATUS_PATH, MODEL_PATH,
     CLASSES, auto_detect_and_crop_face, get_active_classes, get_active_dataset_dir,
     get_active_templates_path, get_active_metadata_path, update_active_session_metadata,
-    activate_session, list_sessions, get_session_details, SESSIONS_DIR
+    activate_session, list_sessions, get_session_details, SESSIONS_DIR, supabase
 )
 
 app = FastAPI(title="Barca Footballer CNN Classifier")
@@ -63,23 +64,23 @@ def startup_event():
 
 @app.get("/api/dataset-info")
 def get_dataset_info():
-    """Gets counts of images in the dataset folders for the active session."""
     active_classes = get_active_classes()
-    active_dataset_dir = get_active_dataset_dir()
-    
-    info = {}
-    for player in active_classes:
-        player_dir = os.path.join(active_dataset_dir, player)
-        if os.path.exists(player_dir):
-            files = [f for f in os.listdir(player_dir) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
-            info[player] = len(files)
-        else:
-            info[player] = 0
-            
     from model_utils import get_active_session_details
     active_id, _, _ = get_active_session_details()
     session_details = get_session_details(active_id)
     
+    info = {}
+    for player in active_classes:
+        if supabase is not None:
+            try:
+                files = supabase.storage.from_("datasets").list(f"{active_id}/{player}")
+                count = len([f for f in files if f["name"].lower().endswith(('.jpg', '.jpeg', '.png'))]) if files else 0
+                info[player] = count
+            except Exception:
+                info[player] = 0
+        else:
+            info[player] = 0
+            
     return {
         "status": "ready",
         "active_session_id": active_id,
@@ -187,35 +188,41 @@ async def predict_image(file: UploadFile = File(...)):
 
 @app.post("/api/upload-training-image")
 async def upload_training_image(player: str = Form(...), file: UploadFile = File(...)):
-    """Allows uploading custom images to active training datasets, cropping them immediately."""
     active_classes = get_active_classes()
-    active_dataset_dir = get_active_dataset_dir()
+    from model_utils import get_active_session_details, compute_master_templates
+    active_id, _, _ = get_active_session_details()
     
     if player not in active_classes:
         raise HTTPException(status_code=400, detail=f"Invalid footballer class '{player}'. Must be one of: {active_classes}")
         
-    player_dir = os.path.join(active_dataset_dir, player)
-    os.makedirs(player_dir, exist_ok=True)
-    
-    filename = f"upload_{int(time.time() * 1000)}_{file.filename}"
-    filepath = os.path.join(player_dir, filename)
-    
+    filename = f"upload_{int(time.time() * 1000)}.jpg"
     try:
         contents = await file.read()
-        
         from PIL import Image
         import io
-        img = Image.open(io.BytesIO(contents))
-        img = img.convert('RGB')
-        
+        img = Image.open(io.BytesIO(contents)).convert('RGB')
         img_cropped = auto_detect_and_crop_face(img, strict=False)
         
-        img_cropped.save(filepath, "JPEG")
+        buffer = io.BytesIO()
+        img_cropped.save(buffer, format="JPEG")
         
+        if supabase is not None:
+            supabase.storage.from_("datasets").upload(
+                path=f"{active_id}/{player}/{filename}",
+                file=buffer.getvalue(),
+                file_options={"content-type": "image/jpeg"}
+            )
+            
+            # Recalculate templates if already trained
+            details = get_session_details(active_id)
+            if details and details.get("status") == "completed":
+                try:
+                    compute_master_templates()
+                except Exception:
+                    pass
+                    
         return {"status": "success", "message": f"Successfully uploaded and cropped image for {player.upper()}."}
     except Exception as e:
-        if os.path.exists(filepath):
-            os.remove(filepath)
         raise HTTPException(status_code=400, detail=f"Invalid image file: {str(e)}")
 
 @app.get("/api/sessions")
@@ -237,20 +244,20 @@ class SessionCreateSchema(BaseModel):
 
 @app.post("/api/sessions")
 def create_session(session_data: SessionCreateSchema):
-    """Creates a new session directory and initializes its metadata."""
     session_id = session_data.id
-    session_dir = os.path.join(SESSIONS_DIR, session_id)
-    if os.path.exists(session_dir):
-        raise HTTPException(status_code=400, detail=f"Session with ID '{session_id}' already exists.")
-        
-    os.makedirs(session_dir, exist_ok=True)
-    os.makedirs(os.path.join(session_dir, "dataset"), exist_ok=True)
-    
+    if supabase is not None:
+        try:
+            res = supabase.table("sessions").select("id").eq("id", session_id).execute()
+            if res.data:
+                raise HTTPException(status_code=400, detail=f"Session with ID '{session_id}' already exists.")
+        except Exception as e:
+            if "already exists" in str(e):
+                raise HTTPException(status_code=400, detail=f"Session with ID '{session_id}' already exists.")
+                
     metadata = {
         "id": session_id,
         "display_name": session_data.display_name,
         "classes": session_data.classes,
-        "created_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "status": "untrained",
         "is_active": False,
         "history": {
@@ -261,28 +268,42 @@ def create_session(session_data: SessionCreateSchema):
         }
     }
     
-    for class_name in session_data.classes:
-        os.makedirs(os.path.join(session_dir, "dataset", class_name), exist_ok=True)
-        
-    with open(os.path.join(session_dir, "metadata.json"), 'w') as f:
-        json.dump(metadata, f)
-        
+    if supabase is not None:
+        try:
+            supabase.table("sessions").insert(metadata).execute()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to create session in Supabase: {str(e)}")
+            
     return metadata
 
 @app.delete("/api/sessions/{session_id}")
 def delete_session(session_id: str):
-    """Deletes a session directory and all its files."""
-    session_dir = os.path.join(SESSIONS_DIR, session_id)
-    if not os.path.exists(session_dir):
-        raise HTTPException(status_code=404, detail=f"Session {session_id} not found.")
-        
     from model_utils import get_active_session_details
     active_id, _, _ = get_active_session_details()
     if active_id == session_id:
         raise HTTPException(status_code=400, detail="Cannot delete the currently active session. Activate another session first.")
         
+    details = get_session_details(session_id)
+    if not details:
+        raise HTTPException(status_code=404, detail=f"Session {session_id} not found.")
+        
     try:
-        shutil.rmtree(session_dir)
+        if supabase is not None:
+            supabase.table("sessions").delete().eq("id", session_id).execute()
+            
+            for class_name in details.get("classes", []):
+                storage_path = f"{session_id}/{class_name}"
+                try:
+                    files = supabase.storage.from_("datasets").list(storage_path)
+                    if files:
+                        to_remove = [f"{storage_path}/{f['name']}" for f in files]
+                        supabase.storage.from_("datasets").remove(to_remove)
+                except Exception:
+                    pass
+            try:
+                supabase.storage.from_("datasets").remove([f"{session_id}/master_templates.json"])
+            except Exception:
+                pass
         return {"status": "success", "message": f"Successfully deleted session '{session_id}'."}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to delete session: {str(e)}")
@@ -304,19 +325,15 @@ class SessionRenameSchema(BaseModel):
 
 @app.post("/api/sessions/{session_id}/rename")
 def rename_session(session_id: str, data: SessionRenameSchema):
-    """Renames the display name of a session profile."""
-    session_dir = os.path.join(SESSIONS_DIR, session_id)
-    metadata_path = os.path.join(session_dir, "metadata.json")
-    if not os.path.exists(metadata_path):
+    details = get_session_details(session_id)
+    if not details:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found.")
-        
     try:
-        with open(metadata_path, 'r') as f:
-            meta = json.load(f)
-        meta["display_name"] = data.display_name
-        with open(metadata_path, 'w') as f:
-            json.dump(meta, f)
-        return {"status": "success", "message": f"Successfully renamed session display name to '{data.display_name}'.", "metadata": meta}
+        if supabase is not None:
+            res = supabase.table("sessions").update({"display_name": data.display_name}).eq("id", session_id).execute()
+            if res.data:
+                return {"status": "success", "message": f"Successfully renamed session display name to '{data.display_name}'.", "metadata": res.data[0]}
+        return {"status": "success", "message": f"Successfully renamed session display name to '{data.display_name}'.", "metadata": details}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to rename session: {str(e)}")
 
@@ -325,79 +342,55 @@ class SessionClassesSchema(BaseModel):
 
 @app.post("/api/sessions/{session_id}/classes")
 def update_session_classes(session_id: str, data: SessionClassesSchema):
-    """Updates the class list configuration for a session."""
-    session_dir = os.path.join(SESSIONS_DIR, session_id)
-    metadata_path = os.path.join(session_dir, "metadata.json")
-    if not os.path.exists(metadata_path):
+    details = get_session_details(session_id)
+    if not details:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found.")
-        
     try:
-        with open(metadata_path, 'r') as f:
-            meta = json.load(f)
-            
-        old_classes = meta.get("classes", [])
-        new_classes = data.classes
-        
-        meta["classes"] = new_classes
-        
-        for class_name in new_classes:
-            os.makedirs(os.path.join(session_dir, "dataset", class_name), exist_ok=True)
-            
-        for idx, new_name in enumerate(new_classes):
-            if idx < len(old_classes):
-                old_name = old_classes[idx]
-                if old_name != new_name:
-                    old_path = os.path.join(session_dir, "dataset", old_name)
-                    new_path = os.path.join(session_dir, "dataset", new_name)
-                    if os.path.exists(old_path) and not os.path.exists(new_path):
-                        try:
-                            os.rename(old_path, new_path)
-                            print(f"Renamed class folder from {old_name} to {new_name}")
-                        except Exception as e:
-                            print(f"Failed to rename class folder: {e}")
-                            
-        with open(metadata_path, 'w') as f:
-            json.dump(meta, f)
-            
-        import model_utils
-        model_utils._active_session_id = None
-        
-        return {"status": "success", "message": "Successfully updated session classes config.", "metadata": meta}
+        if supabase is not None:
+            res = supabase.table("sessions").update({"classes": data.classes}).eq("id", session_id).execute()
+            if res.data:
+                import model_utils
+                model_utils._active_session_id = None
+                return {"status": "success", "message": "Successfully updated session classes config.", "metadata": res.data[0]}
+        return {"status": "success", "message": "Successfully updated session classes config.", "metadata": details}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to update session classes: {str(e)}")
 
 @app.post("/api/sessions/{session_id}/upload")
 async def upload_session_image(session_id: str, player: str = Form(...), file: UploadFile = File(...)):
-    """Uploads a training image to a specific session's class dataset directory, auto-cropping it."""
     session_details = get_session_details(session_id)
     if not session_details:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found.")
-        
     classes = session_details.get("classes", [])
     if player not in classes:
         raise HTTPException(status_code=400, detail=f"Invalid class '{player}'. Must be one of: {classes}")
-        
-    player_dir = os.path.join(SESSIONS_DIR, session_id, "dataset", player)
-    os.makedirs(player_dir, exist_ok=True)
-    
-    filename = f"upload_{int(time.time() * 1000)}_{file.filename}"
-    filepath = os.path.join(player_dir, filename)
-    
     try:
         contents = await file.read()
-        
         from PIL import Image
         import io
-        img = Image.open(io.BytesIO(contents))
-        img = img.convert('RGB')
-        
+        img = Image.open(io.BytesIO(contents)).convert('RGB')
         img_cropped = auto_detect_and_crop_face(img, strict=False)
-        img_cropped.save(filepath, "JPEG")
         
+        buffer = io.BytesIO()
+        img_cropped.save(buffer, format="JPEG")
+        
+        filename = f"upload_{int(time.time() * 1000)}.jpg"
+        if supabase is not None:
+            supabase.storage.from_("datasets").upload(
+                path=f"{session_id}/{player}/{filename}",
+                file=buffer.getvalue(),
+                file_options={"content-type": "image/jpeg"}
+            )
+            
+            # Recalculate templates if already trained
+            if session_details.get("status") == "completed":
+                try:
+                    from model_utils import compute_master_templates
+                    compute_master_templates()
+                except Exception:
+                    pass
         return {"status": "success", "message": f"Successfully uploaded and cropped image for {player.upper()} in session {session_id}."}
     except Exception as e:
-        if os.path.exists(filepath):
-            os.remove(filepath)
         raise HTTPException(status_code=400, detail=f"Invalid image file: {str(e)}")
 
 def run_session_train_task(session_id: str, folds: int):
@@ -426,18 +419,50 @@ def trigger_session_train(session_id: str, background_tasks: BackgroundTasks, fo
     return {"status": "started", "message": f"K-Fold validation started for session '{session_id}'."}
 
 @app.get("/api/sessions/{session_id}/export")
-def export_session(session_id: str):
-    """Exports a session directory as a zip file download."""
-    session_dir = os.path.join(SESSIONS_DIR, session_id)
-    if not os.path.exists(session_dir):
+def export_session(session_id: str, background_tasks: BackgroundTasks):
+    details = get_session_details(session_id)
+    if not details:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found.")
         
-    temp_dir = os.path.abspath(os.path.join(SESSIONS_DIR, "..", "temp_exports"))
-    os.makedirs(temp_dir, exist_ok=True)
-    zip_path = os.path.join(temp_dir, f"{session_id}_export")
+    temp_dir = tempfile.TemporaryDirectory()
+    local_path = temp_dir.name
     
     try:
-        archive_path = shutil.make_archive(zip_path, 'zip', session_dir)
+        os.makedirs(os.path.join(local_path, "dataset"), exist_ok=True)
+        with open(os.path.join(local_path, "metadata.json"), 'w') as f:
+            json.dump(details, f)
+            
+        for class_name in details.get("classes", []):
+            os.makedirs(os.path.join(local_path, "dataset", class_name), exist_ok=True)
+            if supabase is not None:
+                storage_path = f"{session_id}/{class_name}"
+                try:
+                    files = supabase.storage.from_("datasets").list(storage_path)
+                    if files:
+                        for f_info in files:
+                            fname = f_info["name"]
+                            if fname.lower().endswith(('.jpg', '.jpeg', '.png')):
+                                fdata = supabase.storage.from_("datasets").download(f"{storage_path}/{fname}")
+                                if fdata:
+                                    with open(os.path.join(local_path, "dataset", class_name, fname), 'wb') as img_f:
+                                        img_f.write(fdata)
+                except Exception:
+                    pass
+                    
+        if supabase is not None:
+            try:
+                templates_data = supabase.storage.from_("datasets").download(f"{session_id}/master_templates.json")
+                if templates_data:
+                    with open(os.path.join(local_path, "master_templates.json"), 'wb') as mt_f:
+                        mt_f.write(templates_data)
+            except Exception:
+                pass
+                
+        zip_dest = os.path.join(tempfile.gettempdir(), f"{session_id}_export_{int(time.time())}")
+        archive_path = shutil.make_archive(zip_dest, 'zip', local_path)
+        
+        background_tasks.add_task(os.remove, archive_path)
+        
         return FileResponse(
             path=archive_path,
             filename=f"{session_id}_session.zip",
@@ -445,10 +470,14 @@ def export_session(session_id: str):
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to export session: {str(e)}")
+    finally:
+        try:
+            temp_dir.cleanup()
+        except Exception:
+            pass
 
 @app.post("/api/sessions/import")
 async def import_session(file: UploadFile = File(...)):
-    """Imports a session profile from an uploaded zip file."""
     filename = file.filename
     if not filename.endswith('.zip'):
         raise HTTPException(status_code=400, detail="Invalid file type. Must be a .zip file.")
@@ -457,61 +486,83 @@ async def import_session(file: UploadFile = File(...)):
     import re
     session_id = re.sub(r'[^a-z0-9_-]', '_', session_id)
     
-    session_dir = os.path.join(SESSIONS_DIR, session_id)
-    if os.path.exists(session_dir):
-        session_id = f"{session_id}_{int(time.time())}"
-        session_dir = os.path.join(SESSIONS_DIR, session_id)
-        
-    os.makedirs(session_dir, exist_ok=True)
+    if supabase is not None:
+        try:
+            res = supabase.table("sessions").select("id").eq("id", session_id).execute()
+            if res.data:
+                session_id = f"{session_id}_{int(time.time())}"
+        except Exception:
+            pass
+            
+    temp_dir = tempfile.TemporaryDirectory()
+    local_path = temp_dir.name
+    temp_zip = os.path.join(local_path, "import.zip")
     
-    temp_zip_path = os.path.join(SESSIONS_DIR, f"temp_import_{session_id}.zip")
     try:
-        with open(temp_zip_path, 'wb') as buffer:
+        with open(temp_zip, 'wb') as buffer:
             shutil.copyfileobj(file.file, buffer)
             
-        with zipfile.ZipFile(temp_zip_path, 'r') as zip_ref:
-            zip_ref.extractall(session_dir)
+        with zipfile.ZipFile(temp_zip, 'r') as zip_ref:
+            zip_ref.extractall(local_path)
             
-        metadata_path = os.path.join(session_dir, "metadata.json")
+        metadata_path = os.path.join(local_path, "metadata.json")
         if not os.path.exists(metadata_path):
-            found_meta = False
-            for root, dirs, files in os.walk(session_dir):
+            for root, dirs, files in os.walk(local_path):
                 if "metadata.json" in files:
-                    sub_meta = os.path.join(root, "metadata.json")
-                    shutil.copy2(sub_meta, metadata_path)
-                    sub_dataset = os.path.join(root, "dataset")
-                    if os.path.exists(sub_dataset):
-                        shutil.copytree(sub_dataset, os.path.join(session_dir, "dataset"), dirs_exist_ok=True)
-                    sub_templates = os.path.join(root, "master_templates.json")
-                    if os.path.exists(sub_templates):
-                        shutil.copy2(sub_templates, os.path.join(session_dir, "master_templates.json"))
-                    found_meta = True
+                    metadata_path = os.path.join(root, "metadata.json")
                     break
-            if not found_meta:
-                shutil.rmtree(session_dir)
-                raise HTTPException(status_code=400, detail="Uploaded zip does not contain a valid session metadata.json.")
-                
+                    
+        if not os.path.exists(metadata_path):
+            raise HTTPException(status_code=400, detail="Uploaded zip does not contain a valid session metadata.json.")
+            
         with open(metadata_path, 'r') as f:
             meta = json.load(f)
             
         meta["id"] = session_id
         meta["is_active"] = False
         
-        with open(metadata_path, 'w') as f:
-            json.dump(meta, f)
+        if supabase is not None:
+            supabase.table("sessions").insert(meta).execute()
             
+            for class_name in meta.get("classes", []):
+                class_folder = os.path.join(os.path.dirname(metadata_path), "dataset", class_name)
+                if os.path.exists(class_folder):
+                    for img_name in os.listdir(class_folder):
+                        if img_name.lower().endswith(('.jpg', '.jpeg', '.png')):
+                            img_path = os.path.join(class_folder, img_name)
+                            try:
+                                with open(img_path, 'rb') as img_data:
+                                    supabase.storage.from_("datasets").upload(
+                                        path=f"{session_id}/{class_name}/{img_name}",
+                                        file=img_data.read(),
+                                        file_options={"content-type": "image/jpeg" if img_name.lower().endswith(('.jpg', '.jpeg')) else "image/png"}
+                                    )
+                            except Exception:
+                                pass
+                                
+            templates_path = os.path.join(os.path.dirname(metadata_path), "master_templates.json")
+            if os.path.exists(templates_path):
+                try:
+                    with open(templates_path, 'rb') as mt_data:
+                        supabase.storage.from_("datasets").upload(
+                            path=f"{session_id}/master_templates.json",
+                            file=mt_data.read(),
+                            file_options={"content-type": "application/json", "upsert": "true"}
+                        )
+                except Exception:
+                    pass
+                    
         return {"status": "success", "message": f"Successfully imported session '{session_id}'.", "metadata": meta}
     except Exception as e:
-        if os.path.exists(session_dir):
-            shutil.rmtree(session_dir)
         raise HTTPException(status_code=500, detail=f"Failed to import session: {str(e)}")
     finally:
-        if os.path.exists(temp_zip_path):
-            os.remove(temp_zip_path)
+        try:
+            temp_dir.cleanup()
+        except Exception:
+            pass
 
 @app.get("/api/sessions/{session_id}/dataset/{class_name}")
 def list_headshots(session_id: str, class_name: str):
-    """Lists all cropped headshot filenames for a given session and class."""
     session_details = get_session_details(session_id)
     if not session_details:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found.")
@@ -520,28 +571,35 @@ def list_headshots(session_id: str, class_name: str):
     if class_name not in classes:
         raise HTTPException(status_code=400, detail=f"Class '{class_name}' is not part of session '{session_id}'.")
         
-    class_dir = os.path.join(SESSIONS_DIR, session_id, "dataset", class_name)
-    if not os.path.exists(class_dir):
-        return []
-        
-    files = [f for f in os.listdir(class_dir) if f.lower().endswith(('.jpg', '.jpeg', '.png'))]
-    return sorted(files)
+    if supabase is not None:
+        try:
+            storage_path = f"{session_id}/{class_name}"
+            files = supabase.storage.from_("datasets").list(storage_path)
+            if files:
+                return sorted([f["name"] for f in files if f["name"].lower().endswith(('.jpg', '.jpeg', '.png'))])
+        except Exception as e:
+            print(f"Error listing headshots from storage: {e}")
+    return []
 
 @app.get("/api/sessions/{session_id}/dataset/{class_name}/{filename}")
 def serve_headshot(session_id: str, class_name: str, filename: str):
-    """Serves a specific cropped headshot image file."""
     filename = os.path.basename(filename)
-    filepath = os.path.join(SESSIONS_DIR, session_id, "dataset", class_name, filename)
-    if not os.path.exists(filepath):
-        raise HTTPException(status_code=404, detail="Headshot file not found.")
-    return FileResponse(filepath)
+    if supabase is not None:
+        try:
+            storage_path = f"{session_id}/{class_name}/{filename}"
+            file_bytes = supabase.storage.from_("datasets").download(storage_path)
+            if file_bytes:
+                media_type = "image/png" if filename.lower().endswith('.png') else "image/jpeg"
+                return Response(content=file_bytes, media_type=media_type)
+        except Exception as e:
+            print(f"Error serving headshot from storage: {e}")
+    raise HTTPException(status_code=404, detail="Headshot file not found.")
 
 class BulkDeleteSchema(BaseModel):
     filenames: List[str]
 
 @app.delete("/api/sessions/{session_id}/dataset/{class_name}")
 def delete_headshots(session_id: str, class_name: str, data: BulkDeleteSchema):
-    """Deletes list of specified headshot filenames from a session's class folder."""
     session_details = get_session_details(session_id)
     if not session_details:
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found.")
@@ -550,23 +608,17 @@ def delete_headshots(session_id: str, class_name: str, data: BulkDeleteSchema):
     if class_name not in classes:
         raise HTTPException(status_code=400, detail=f"Class '{class_name}' is not part of session '{session_id}'.")
         
-    class_dir = os.path.join(SESSIONS_DIR, session_id, "dataset", class_name)
-    if not os.path.exists(class_dir):
-        return {"status": "success", "message": "Class directory is already empty.", "deleted_count": 0}
-        
     deleted_count = 0
-    for filename in data.filenames:
-        clean_filename = os.path.basename(filename)
-        filepath = os.path.join(class_dir, clean_filename)
-        if os.path.exists(filepath):
-            try:
-                os.remove(filepath)
-                deleted_count += 1
-            except Exception as e:
-                print(f"Error deleting file {filepath}: {e}")
-                
-    templates_path = os.path.join(SESSIONS_DIR, session_id, "master_templates.json")
-    if os.path.exists(templates_path) and deleted_count > 0:
+    if supabase is not None:
+        to_remove = [f"{session_id}/{class_name}/{os.path.basename(f)}" for f in data.filenames]
+        try:
+            res = supabase.storage.from_("datasets").remove(to_remove)
+            if res:
+                deleted_count = len(res)
+        except Exception as e:
+            print(f"Error removing files from Supabase Storage: {e}")
+            
+    if deleted_count > 0:
         from model_utils import get_active_session_details, compute_master_templates
         active_id, _, _ = get_active_session_details()
         if active_id == session_id:

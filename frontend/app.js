@@ -1,4 +1,15 @@
 
+const API_BASE = ""; 
+if (API_BASE) {
+    const originalFetch = window.fetch;
+    window.fetch = function(input, init) {
+        if (typeof input === 'string' && input.startsWith('/api')) {
+            input = API_BASE + input;
+        }
+        return originalFetch(input, init);
+    };
+}
+
 let trainingChart = null;
 let pollInterval = null;
 let isTrainingActive = false;
