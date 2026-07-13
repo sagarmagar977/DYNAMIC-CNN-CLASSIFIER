@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -14,17 +15,18 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
     <div class="glass-bg"></div>
     <div class="app-container">
-        
+
         <!-- Header -->
         <header class="app-header">
             <div class="logo-area">
                 <i class="fa-solid fa-futbol ball-icon"></i>
                 <div class="logo-text">
-                    <h1>CAMP NOU</h1>
-                    <p>CNN PLAYER CLASSIFIER</p>
+                    <h1>WHOAMI</h1>
+                    <p>CNN PERSON CLASSIFIER</p>
                 </div>
             </div>
             <div class="header-tag">
@@ -33,113 +35,80 @@
             </div>
         </header>
 
+        <!-- Action Bar between Header and Navbar -->
+        <div class="action-bar" style="display: flex; justify-content: flex-start; padding: 10px 0; margin-bottom: 5px;">
+            <button class="btn btn-primary" id="btn-new-session">
+                <i class="fa-solid fa-plus"></i> New Session
+            </button>
+        </div>
+
+        <!-- Navbar Tab Row below header -->
+        <nav class="app-nav">
+            <button class="nav-tab active" id="tab-predict" data-tab="predict">
+                <i class="fa-solid fa-circle-play"></i> Predict
+            </button>
+            <button class="nav-tab" id="tab-models" data-tab="models">
+                <i class="fa-solid fa-folder-open"></i> Model Manager
+            </button>
+        </nav>
+
         <!-- Main Grid Layout -->
-        <main class="dashboard-grid">
-            
+        <main class="dashboard-grid mode-predict" id="dashboard-grid">
+
             <!-- Left Panel: Dataset Manager & Hyperparams -->
-            <section class="left-panel dashboard-card">
+            <section class="left-panel dashboard-card" id="panel-dataset-manager">
                 <div class="card-header">
                     <h2><i class="fa-solid fa-images icon-blue"></i> Dataset Manager</h2>
-                    <button class="btn btn-primary" id="btn-download-dataset">
+                    <button class="btn btn-primary" id="btn-download-dataset" style="display: none;">
                         <i class="fa-solid fa-cloud-arrow-down"></i> Pull Player Images
                     </button>
                 </div>
-                
-                <p class="section-desc">Download Barcelona footballer photos from the internet to build the CNN training dataset, or upload your own images below.</p>
-                
-                <!-- Player Cards Grid -->
-                <div class="player-cards">
-                    <!-- Messi -->
-                    <div class="player-card messi-card">
-                        <div class="card-glow"></div>
-                        <div class="jersey-num">10</div>
-                        <div class="player-details">
-                            <h3>Lionel Messi</h3>
-                            <span class="player-pos">Forward / Legend</span>
-                            <div class="image-count">
-                                <i class="fa-regular fa-image"></i> <span id="count-messi">0</span> images
-                            </div>
-                        </div>
-                        <div class="upload-btn-wrapper">
-                            <label class="btn-upload" for="upload-messi">
-                                <i class="fa-solid fa-plus"></i> Add training photo
-                            </label>
-                            <input type="file" id="upload-messi" accept="image/*" class="train-upload-input" data-player="messi">
-                        </div>
-                    </div>
 
-                    <!-- Yamal -->
-                    <div class="player-card yamal-card">
-                        <div class="card-glow"></div>
-                        <div class="jersey-num">19</div>
-                        <div class="player-details">
-                            <h3>Lamine Yamal</h3>
-                            <span class="player-pos">Right Winger</span>
-                            <div class="image-count">
-                                <i class="fa-regular fa-image"></i> <span id="count-yamal">0</span> images
-                            </div>
-                        </div>
-                        <div class="upload-btn-wrapper">
-                            <label class="btn-upload" for="upload-yamal">
-                                <i class="fa-solid fa-plus"></i> Add training photo
-                            </label>
-                            <input type="file" id="upload-yamal" accept="image/*" class="train-upload-input" data-player="yamal">
-                        </div>
+                <!-- Session Configuration (Editable) -->
+                <div class="session-config-section">
+                    <div class="param-group">
+                        <label for="session-display-name">Session Name</label>
+                        <input type="text" id="session-display-name" value="Barcelona Players"
+                            placeholder="e.g. Barcelona Players">
                     </div>
-
-                    <!-- Lewandowski -->
-                    <div class="player-card lewandowski-card">
-                        <div class="card-glow"></div>
-                        <div class="jersey-num">9</div>
-                        <div class="player-details">
-                            <h3>R. Lewandowski</h3>
-                            <span class="player-pos">Striker</span>
-                            <div class="image-count">
-                                <i class="fa-regular fa-image"></i> <span id="count-lewandowski">0</span> images
-                            </div>
+                    <div class="params-row" style="display: flex; gap: 15px; margin-top: 10px;">
+                        <div class="param-group" style="flex: 1;">
+                            <label for="session-classes-count">Number of Classes</label>
+                            <input type="number" id="session-classes-count" value="3" min="2" max="10">
                         </div>
-                        <div class="upload-btn-wrapper">
-                            <label class="btn-upload" for="upload-lewandowski">
-                                <i class="fa-solid fa-plus"></i> Add training photo
-                            </label>
-                            <input type="file" id="upload-lewandowski" accept="image/*" class="train-upload-input" data-player="lewandowski">
+                        <div class="param-group" style="flex: 1;">
+                            <label for="epochs">Folds (K)</label>
+                            <input type="number" id="epochs" value="5" min="2" max="20"
+                                title="Number of validation folds">
                         </div>
                     </div>
                 </div>
 
+                <p class="section-desc" style="margin-top: 10px;">Upload folder images to the classes below to build the
+                    dataset.</p>
+
+                <!-- Player Cards Grid (Populated dynamically) -->
+                <div class="player-cards" id="player-cards-container">
+                    <!-- Dynamic cards go here -->
+                </div>
+
                 <!-- Training Parameters -->
-                <div class="hyperparams-section">
-                    <h3><i class="fa-solid fa-sliders icon-gold"></i> Training Settings</h3>
-                    <div class="params-row">
-                        <div class="param-group">
-                            <label for="epochs">Epochs</label>
-                            <input type="number" id="epochs" value="10" min="1" max="100">
-                        </div>
-                        <div class="param-group">
-                            <label for="batch_size">Batch Size</label>
-                            <input type="number" id="batch_size" value="4" min="1" max="32">
-                        </div>
-                        <div class="param-group">
-                            <label for="lr">Learning Rate</label>
-                            <select id="lr">
-                                <option value="0.01">0.01 (Fast)</option>
-                                <option value="0.001" selected>0.001 (Recommended)</option>
-                                <option value="0.0001">0.0001 (Slow)</option>
-                            </select>
-                        </div>
-                    </div>
+                <div class="hyperparams-section" style="margin-top: auto;">
                     <button class="btn btn-secondary btn-block" id="btn-train-model">
-                        <i class="fa-solid fa-gears"></i> Train Convolutional Neural Network
+                        <i class="fa-solid fa-gears"></i> Run Vector Space Cross-Validation
                     </button>
                 </div>
             </section>
 
             <!-- Middle Panel: Live Training Dashboard -->
-            <section class="middle-panel dashboard-card">
+            <section class="middle-panel dashboard-card" id="panel-validation">
                 <div class="card-header">
-                    <h2><i class="fa-solid fa-chart-line icon-red"></i> Training Progress</h2>
+                    <h2><i class="fa-solid fa-chart-line icon-red"></i> Validation Progress</h2>
+                    <button class="btn btn-primary" id="btn-retrain-redirect" style="display: none;">
+                        <i class="fa-solid fa-rotate-left"></i> Re-train Session
+                    </button>
                 </div>
-                
+
                 <!-- Training Console / Status -->
                 <div id="training-console" class="training-console inactive">
                     <div class="status-indicator">
@@ -151,7 +120,7 @@
                     </div>
                     <div class="metrics-summary">
                         <div class="metric-box">
-                            <span class="metric-label">Epoch</span>
+                            <span class="metric-label">Fold</span>
                             <span class="metric-val" id="metric-epoch">-</span>
                         </div>
                         <div class="metric-box">
@@ -176,12 +145,14 @@
             </section>
 
             <!-- Right Panel: Inference Playground & Activation Maps -->
-            <section class="right-panel dashboard-card">
-                <div class="card-header">
+            <section class="right-panel dashboard-card" id="panel-inference">
+                <div class="active-session-title-large" id="active-session-name-indicator" style="font-size: 1.6rem; font-weight: 700; color: var(--barca-gold); margin-bottom: 5px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; text-shadow: 0 0 10px rgba(237, 187, 0, 0.2);">Barcelona Players</div>
+                <div class="card-header" style="border-bottom: none; padding-bottom: 0;">
                     <h2><i class="fa-solid fa-wand-magic-sparkles icon-gold"></i> Inference Sandbox</h2>
                 </div>
-                <p class="section-desc">Import a test image of a player (drag & drop, upload, or paste URL) to classify it using the CNN and view convolutional feature maps.</p>
-                
+                <p class="section-desc">Import a test image of a player (drag & drop, upload, or paste URL) to classify
+                    it using the CNN and view convolutional feature maps.</p>
+
                 <div class="inference-sandbox">
                     <!-- Drop Zone -->
                     <div class="drop-zone" id="drop-zone">
@@ -190,7 +161,7 @@
                         <input type="file" id="test-image-upload" accept="image/*" style="display: none;">
                         <img id="preview-img" class="preview-img" alt="Test Image Preview">
                     </div>
-                    
+
                     <!-- URL Import -->
                     <div class="url-input-row">
                         <input type="text" id="test-image-url" placeholder="Or paste image URL...">
@@ -198,13 +169,17 @@
                     </div>
 
                     <!-- Cropped Face Preview (Directly below upload preview) -->
-                    <div id="cropped-face-container" style="display: none; margin: 15px 0; text-align: center; background: rgba(255,255,255,0.03); border: 1px dashed var(--border-color); border-radius: 12px; padding: 15px;">
-                        <p class="section-desc" style="margin-bottom: 8px; font-weight: 600; color: var(--barca-gold);">CNN Input (Cropped Face)</p>
-                        <img id="cropped-face-preview" src="" style="width: 120px; height: 120px; border-radius: 12px; border: 2px solid var(--barca-gold); object-fit: cover; box-shadow: 0 4px 15px rgba(0,0,0,0.4);" alt="Cropped Face Preview">
+                    <div id="cropped-face-container"
+                        style="display: none; margin: 15px 0; text-align: center; background: rgba(255,255,255,0.03); border: 1px dashed var(--border-color); border-radius: 12px; padding: 15px;">
+                        <p class="section-desc" style="margin-bottom: 8px; font-weight: 600; color: var(--barca-gold);">
+                            CNN Input (Cropped Face)</p>
+                        <img id="cropped-face-preview" src=""
+                            style="width: 120px; height: 120px; border-radius: 12px; border: 2px solid var(--barca-gold); object-fit: cover; box-shadow: 0 4px 15px rgba(0,0,0,0.4);"
+                            alt="Cropped Face Preview">
                     </div>
 
                     <div class="prediction-results" id="prediction-results">
-                        <h3>Inference Predictions</h3>
+                        <h3>Cosine Similarity Score</h3>
                         <div id="results-list">
                             <p class="placeholder-text">Please upload or import a player image to see predictions.</p>
                         </div>
@@ -213,7 +188,8 @@
                     <!-- Activation Maps (First Conv Layer) -->
                     <div class="activation-maps-section" id="activation-maps-section">
                         <h3><i class="fa-solid fa-eye icon-blue"></i> First Layer Conv Activations (Feature Maps)</h3>
-                        <p class="section-desc">Visualization of the 16 feature maps from the first convolutional layer (conv2d_1) showing how the CNN extracts shapes, textures, and borders.</p>
+                        <p class="section-desc">Visualization of the 16 feature maps from the first convolutional layer
+                            showing how the CNN extracts shapes, textures, and borders.</p>
                         <div class="activation-grid" id="activation-grid">
                             <!-- JS will load images here -->
                             <div class="placeholder-maps">
@@ -223,18 +199,84 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Locked Sandbox Overlay -->
+                <div class="sandbox-overlay-lock" id="sandbox-lock-overlay" style="display: none;">
+                    <i class="fa-solid fa-lock"></i>
+                    <h3>Inference Locked</h3>
+                    <p>Complete Stratified K-Fold validation first to generate templates and unlock predictions for this
+                        profile.</p>
+                </div>
+            </section>
+
+            <!-- Model Manager Panel (Exposed dynamically) -->
+            <section class="model-manager-view" id="panel-model-manager">
+                <div class="card-header">
+                    <h2><i class="fa-solid fa-folder-open icon-blue"></i> Model Manager</h2>
+                    <div class="model-manager-actions" style="display: flex; gap: 10px;">
+                        <label class="btn btn-primary" for="import-session-file" style="margin: 0; cursor: pointer;">
+                            <i class="fa-solid fa-cloud-arrow-up"></i> Import Session
+                        </label>
+                        <input type="file" id="import-session-file" accept=".zip" style="display: none;">
+                    </div>
+                </div>
+                <p class="section-desc">Create, switch, rename, export, import, or delete your dynamic model profiles.
+                </p>
+                <div class="model-grid" id="model-grid">
+                    <!-- Dynamic session cards go here -->
+                </div>
             </section>
         </main>
-        
+
+        <!-- Headshots Gallery Modal -->
+        <div id="gallery-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="gallery-title">Headshot Gallery</h2>
+                    <div class="gallery-controls">
+                        <button class="btn btn-primary" id="btn-toggle-bulk-delete">
+                            <i class="fa-solid fa-square-check"></i> Select Images
+                        </button>
+                        <button class="btn btn-secondary" id="btn-bulk-delete" style="display: none;">
+                            <i class="fa-solid fa-trash-can"></i> Delete Selected
+                        </button>
+                        <span class="close-btn" id="btn-close-gallery">&times;</span>
+                    </div>
+                </div>
+                <!-- Grid View -->
+                <div class="gallery-grid-wrapper">
+                    <div class="gallery-grid" id="gallery-grid">
+                        <!-- Headshots loaded dynamically -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Lightbox Slideshow Modal -->
+        <div id="lightbox-modal" class="lightbox">
+            <span class="lightbox-close" id="btn-close-lightbox">&times;</span>
+            <div class="lightbox-content">
+                <img id="lightbox-img" src="" alt="Slideshow Image">
+                <div id="lightbox-caption" class="lightbox-caption"></div>
+            </div>
+            <a class="lightbox-prev" id="btn-prev-lightbox">&#10094;</a>
+            <a class="lightbox-next" id="btn-next-lightbox">&#10095;</a>
+            <button class="btn btn-secondary lightbox-delete-btn" id="btn-delete-lightbox-img">
+                <i class="fa-solid fa-trash-can"></i> Delete Image
+            </button>
+        </div>
+
         <!-- Toast Notification -->
         <div id="toast" class="toast"></div>
 
         <!-- Footer -->
         <footer class="app-footer">
-            <p>Més que un club. Powered by TensorFlow & Python FastAPI. Created for Barcelona Footballers Classifier.</p>
+            <p>Més que un club. Powered by TensorFlow & Python FastAPI. Created for Barcelona Footballers Classifier.
+            </p>
         </footer>
     </div>
     <!-- App Script -->
     <script src="app.js"></script>
 </body>
+
 </html>
