@@ -356,7 +356,8 @@ def update_session_classes(session_id: str, data: SessionClassesSchema):
                     try:
                         old_prefix = f"{session_id}/{old_name}"
                         new_prefix = f"{session_id}/{new_name}"
-                        files = supabase.storage.from_("datasets").list(old_prefix, {"limit": 1000})
+                        from model_utils import list_all_storage_files
+                        files = list_all_storage_files("datasets", old_prefix)
                         for f_info in files:
                             fname = f_info.get("name")
                             if not fname:

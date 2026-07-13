@@ -214,6 +214,27 @@ def sanitize_filename(filename: str) -> str:
         clean_name = "file"
     return f"{clean_name}{ext.lower()}"
 
+def list_all_storage_files(bucket: str, path: str) -> list:
+    """Paginate through Supabase Storage listing to get ALL files with no cap.
+    Supabase default limit is 100; this fetches pages of 1000 until exhausted."""
+    if supabase is None:
+        return []
+    all_files = []
+    page_size = 1000
+    offset = 0
+    while True:
+        try:
+            page = supabase.storage.from_(bucket).list(path, {"limit": page_size, "offset": offset})
+        except Exception:
+            break
+        if not page:
+            break
+        all_files.extend(page)
+        if len(page) < page_size:
+            break  # Last page reached
+        offset += page_size
+    return all_files
+
 def auto_migrate_legacy_dataset():
     if supabase is None:
         return
@@ -299,13 +320,9 @@ def auto_migrate_legacy_dataset():
                     except Exception as e:
                         print(f"Error migrating metadata for session {s_id}: {e}")
 
-                    # List existing folders in Supabase Storage to check which folders are already uploaded
-                    try:
-                        sess_files = supabase.storage.from_("datasets").list(s_id, {"limit": 1000})
-                        uploaded_folders = {f["name"]: f for f in sess_files if f.get("metadata") is None}
-                    except Exception:
-                        uploaded_folders = {}
-                        sess_files = []
+                    # List existing folders in Supabase Storage — paginated, no cap
+                    sess_files = list_all_storage_files("datasets", s_id)
+                    uploaded_folders = {f["name"]: f for f in sess_files if f.get("metadata") is None}
 
                     sess_dataset_dir = os.path.join(sess_path, "dataset")
                     if os.path.exists(sess_dataset_dir):
@@ -322,11 +339,8 @@ def auto_migrate_legacy_dataset():
 
                             # Compare local file count with what's in Supabase to detect partial uploads
                             if c_name in uploaded_folders:
-                                try:
-                                    remote_files = supabase.storage.from_("datasets").list(f"{s_id}/{c_name}", {"limit": 1000})
-                                    remote_count = len([x for x in remote_files if x.get("metadata") is not None])
-                                except Exception:
-                                    remote_count = 0
+                                remote_files = list_all_storage_files("datasets", f"{s_id}/{c_name}")
+                                remote_count = len([x for x in remote_files if x.get("metadata") is not None])
                                 if remote_count >= local_img_count:
                                     continue  # Already fully uploaded
 
