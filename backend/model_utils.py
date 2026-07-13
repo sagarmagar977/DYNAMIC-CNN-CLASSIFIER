@@ -1,4 +1,6 @@
 import os
+# Force Keras 2 legacy behavior for model loading compatibility
+os.environ['TF_USE_LEGACY_KERAS'] = '1'
 # Reduce TensorFlow memory footprint on RAM-constrained servers (like Render 512MB free tier)
 os.environ["CUDA_VISIBLE_DEVICES"] = "-1"          # Disable GPU checks
 os.environ["TF_ENABLE_ONEDNN_OPTS"] = "0"          # Disable oneDNN scratch buffers
@@ -542,13 +544,13 @@ def auto_detect_and_crop_face(pil_image, strict=False):
 WEIGHTS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mobilefacenet_weights.h5")
 
 def download_weights_if_missing():
-    if not os.path.exists(WEIGHTS_PATH):
+    if not os.path.exists(WEIGHTS_PATH) or os.path.getsize(WEIGHTS_PATH) < 1000 * 1024:
         if supabase is None:
             raise FileNotFoundError(
-                f"Pre-trained MobileFaceNet weights file is missing at: {WEIGHTS_PATH}. "
+                f"Pre-trained MobileFaceNet weights file is missing/invalid at: {WEIGHTS_PATH}. "
                 "Supabase is not configured so weights cannot be downloaded automatically."
             )
-        print(f"Weights not found locally. Downloading from Supabase Storage...")
+        print(f"Weights not found locally or invalid size. Downloading from Supabase Storage...")
         try:
             weights_bytes = supabase.storage.from_("datasets").download("models/mobilefacenet_weights.h5")
             if not weights_bytes:

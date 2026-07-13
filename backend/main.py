@@ -1,4 +1,6 @@
 import os
+# Force Keras 2 legacy behavior for model loading compatibility
+os.environ['TF_USE_LEGACY_KERAS'] = '1'
 import json
 import shutil
 import tempfile
@@ -41,7 +43,7 @@ def startup_event():
     import threading
 
     def _init_background():
-        from model_utils import get_model, compute_master_templates, MODEL_PATH, auto_migrate_legacy_dataset, _load_initial_templates
+        from model_utils import get_model, MODEL_PATH, _load_initial_templates
         import os
 
         print("Loading master templates...")
@@ -49,12 +51,6 @@ def startup_event():
             _load_initial_templates()
         except Exception as e:
             print(f"Warning: Could not load initial templates: {e}")
-
-        print("Running auto-migration of legacy dataset...")
-        try:
-            auto_migrate_legacy_dataset()
-        except Exception as e:
-            print(f"Warning: Could not complete legacy dataset migration: {e}")
 
         print("Pre-loading model into memory cache...")
         model = get_model()
@@ -65,11 +61,6 @@ def startup_event():
             except Exception as e:
                 print(f"Warning: Could not save model skeleton: {e}")
 
-        print("Pre-computing master templates for active session...")
-        try:
-            compute_master_templates()
-        except Exception as e:
-            print(f"Warning: Could not pre-compute master templates on startup: {e}")
         print("Background initialization complete.")
 
     thread = threading.Thread(target=_init_background, daemon=True)
