@@ -1211,6 +1211,17 @@ async function executeBulkDelete() {
         
         if (res.ok) {
             showToast(`Deleted ${list.length} images successfully.`);
+            
+            // Remove deleted files from local state
+            activeGalleryImages = activeGalleryImages.filter(img => !list.includes(img));
+            
+            // Update UI count element locally and instantly
+            const key = activeGalleryClass.toLowerCase().replace(/[^a-z0-9]/g, '_');
+            const countEl = document.getElementById(`count-${key}`);
+            if (countEl) {
+                countEl.textContent = activeGalleryImages.length;
+            }
+
             toggleBulkDeleteMode();
             await loadGalleryGrid();
             await updateClassImageCounts();
@@ -1266,19 +1277,28 @@ async function deleteActiveLightboxImage() {
         if (res.ok) {
             showToast("Image deleted successfully.");
             
+            // Remove from local array
             activeGalleryImages.splice(activeLightboxIndex, 1);
+            
+            // Update UI count element locally and instantly
+            const key = activeGalleryClass.toLowerCase().replace(/[^a-z0-9]/g, '_');
+            const countEl = document.getElementById(`count-${key}`);
+            if (countEl) {
+                countEl.textContent = activeGalleryImages.length;
+            }
+
+            // Sync with backend counts for training validations
             await updateClassImageCounts();
 
             if (activeGalleryImages.length === 0) {
-                
                 lightboxModal.classList.remove('show');
                 loadGalleryGrid();
             } else {
-                
                 if (activeLightboxIndex >= activeGalleryImages.length) {
                     activeLightboxIndex = activeGalleryImages.length - 1;
                 }
                 loadLightboxImage();
+                loadGalleryGrid(); // Update the gallery grid behind the lightbox dynamically
             }
         } else {
             showToast("Failed to delete image.");
