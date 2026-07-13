@@ -896,6 +896,13 @@ def train_cnn_model(epochs=5, batch_size=4):
             "error": str(e)
         })
         return False
+    finally:
+        try:
+            import tensorflow as tf
+            tf.keras.backend.clear_session()
+            print("Cleared Keras session memory cache.")
+        except Exception as ce:
+            print(f"Warning: Could not clear Keras session cache: {ce}")
 
 def run_inference(image_bytes):
     """Runs cosine similarity prediction on custom image bytes against Master Vector Templates."""
