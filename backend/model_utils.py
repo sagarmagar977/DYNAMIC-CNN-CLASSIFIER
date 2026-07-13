@@ -508,10 +508,25 @@ WEIGHTS_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "mobilef
 
 def download_weights_if_missing():
     if not os.path.exists(WEIGHTS_PATH):
-        raise FileNotFoundError(
-            f"Pre-trained MobileFaceNet weights file is missing at: {WEIGHTS_PATH}. "
-            "The system cannot function without these pre-trained weights."
-        )
+        if supabase is None:
+            raise FileNotFoundError(
+                f"Pre-trained MobileFaceNet weights file is missing at: {WEIGHTS_PATH}. "
+                "Supabase is not configured so weights cannot be downloaded automatically."
+            )
+        print(f"Weights not found locally. Downloading from Supabase Storage...")
+        try:
+            weights_bytes = supabase.storage.from_("datasets").download("models/mobilefacenet_weights.h5")
+            if not weights_bytes:
+                raise ValueError("Downloaded weights file is empty.")
+            os.makedirs(os.path.dirname(WEIGHTS_PATH), exist_ok=True)
+            with open(WEIGHTS_PATH, 'wb') as f:
+                f.write(weights_bytes)
+            print(f"Weights downloaded successfully to {WEIGHTS_PATH} ({len(weights_bytes)/1024/1024:.2f} MB)")
+        except Exception as e:
+            raise FileNotFoundError(
+                f"Failed to download weights from Supabase Storage: {e}. "
+                f"Expected at: datasets/models/mobilefacenet_weights.h5"
+            )
 
 def get_model():
     """Retrieves the trained model from in-memory cache, or loads it from disk if available."""
