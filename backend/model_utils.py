@@ -256,7 +256,7 @@ def auto_migrate_legacy_dataset():
                                     with open(file_path, 'rb') as file_data:
                                         supabase.storage.from_("datasets").upload(
                                             path=destination,
-                                            file=file_data,
+                                            file=file_data.read(),
                                             file_options={"content-type": "image/jpeg" if filename.lower().endswith(('.jpg', '.jpeg')) else "image/png"}
                                         )
                                 except Exception as ue:
@@ -274,6 +274,61 @@ def auto_migrate_legacy_dataset():
                     except Exception as te:
                         print(f"Failed to upload templates during migration: {te}")
                 print("Automatic legacy dataset migration complete!")
+
+        if os.path.exists(SESSIONS_DIR):
+            for s_id in os.listdir(SESSIONS_DIR):
+                sess_path = os.path.join(SESSIONS_DIR, s_id)
+                if os.path.isdir(sess_path) and s_id != "barca_players":
+                    db_res = supabase.table("sessions").select("*").eq("id", s_id).execute()
+                    meta_path = os.path.join(sess_path, "metadata.json")
+                    if not db_res.data and os.path.exists(meta_path):
+                        try:
+                            with open(meta_path, 'r') as f:
+                                meta = json.load(f)
+                            supabase.table("sessions").insert(meta).execute()
+                            print(f"Migrated metadata for session '{s_id}' to Supabase DB.")
+                        except Exception as e:
+                            print(f"Error migrating metadata for session {s_id}: {e}")
+
+                    try:
+                        sess_files = supabase.storage.from_("datasets").list(s_id)
+                    except Exception:
+                        sess_files = []
+
+                    if not sess_files or len(sess_files) == 0:
+                        sess_dataset_dir = os.path.join(sess_path, "dataset")
+                        if os.path.exists(sess_dataset_dir):
+                            print(f"Migrating dataset images for session '{s_id}' to Supabase Storage...")
+                            for c_name in os.listdir(sess_dataset_dir):
+                                class_folder = os.path.join(sess_dataset_dir, c_name)
+                                if os.path.isdir(class_folder):
+                                    for filename in os.listdir(class_folder):
+                                        filepath = os.path.join(class_folder, filename)
+                                        if filename.lower().endswith(('.jpg', '.jpeg', '.png')):
+                                            clean_name = sanitize_filename(filename)
+                                            destination = f"{s_id}/{c_name}/{clean_name}"
+                                            try:
+                                                with open(filepath, 'rb') as fd:
+                                                    supabase.storage.from_("datasets").upload(
+                                                        path=destination,
+                                                        file=fd.read(),
+                                                        file_options={"content-type": "image/jpeg" if filename.lower().endswith(('.jpg', '.jpeg')) else "image/png"}
+                                                    )
+                                            except Exception as ue:
+                                                print(f"Failed to upload {filename} in session {s_id}: {ue}")
+
+                        sess_templates = os.path.join(sess_path, "master_templates.json")
+                        if os.path.exists(sess_templates):
+                            try:
+                                with open(sess_templates, 'rb') as f:
+                                    supabase.storage.from_("datasets").upload(
+                                        path=f"{s_id}/master_templates.json",
+                                        file=f.read(),
+                                        file_options={"content-type": "application/json", "upsert": "true"}
+                                    )
+                            except Exception as te:
+                                print(f"Failed to upload templates for session {s_id}: {te}")
+                            print(f"Migration for session '{s_id}' complete!")
     except Exception as e:
         print(f"Warning during auto-migration to Supabase: {e}")
 
