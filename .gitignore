@@ -20,13 +20,14 @@ __pycache__/
 # OS files
 .DS_Store
 Thumbs.db
-
-# Large Model Weights & Data (Adjust these names to match your project files)
-*.h5
+# Large Model Weights & Data
+# Block large/generated model files
+facenet_keras.h5
 *.keras
 *.pt
 *.pth
 *.pkl
+# mobilefacenet_weights.h5 is intentionally NOT ignored (only 5MB, needed by Render)
 
 # Secrets and Environment Variables
 .env
