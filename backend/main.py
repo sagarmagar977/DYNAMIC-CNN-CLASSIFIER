@@ -37,30 +37,39 @@ task_state = {
 
 @app.on_event("startup")
 def startup_event():
-    """Performs legacy migrations, pre-loads the model, and initializes the active session."""
-    from model_utils import get_model, compute_master_templates, MODEL_PATH, auto_migrate_legacy_dataset
-    import os
-    
-    print("Running auto-migration of legacy dataset...")
-    try:
-        auto_migrate_legacy_dataset()
-    except Exception as e:
-        print(f"Warning: Could not complete legacy dataset migration: {e}")
-        
-    print("Pre-loading model into memory cache...")
-    model = get_model()
-    if model is not None and not os.path.exists(MODEL_PATH):
+    """Starts heavy initialization in a background thread so the port binds immediately."""
+    import threading
+
+    def _init_background():
+        from model_utils import get_model, compute_master_templates, MODEL_PATH, auto_migrate_legacy_dataset
+        import os
+
+        print("Running auto-migration of legacy dataset...")
         try:
-            model.save(MODEL_PATH)
-            print(f"Saved initial model skeleton to {MODEL_PATH}")
+            auto_migrate_legacy_dataset()
         except Exception as e:
-            print(f"Warning: Could not save model skeleton: {e}")
-            
-    print("Pre-computing master templates for active session...")
-    try:
-        compute_master_templates()
-    except Exception as e:
-        print(f"Warning: Could not pre-compute master templates on startup: {e}")
+            print(f"Warning: Could not complete legacy dataset migration: {e}")
+
+        print("Pre-loading model into memory cache...")
+        model = get_model()
+        if model is not None and not os.path.exists(MODEL_PATH):
+            try:
+                model.save(MODEL_PATH)
+                print(f"Saved initial model skeleton to {MODEL_PATH}")
+            except Exception as e:
+                print(f"Warning: Could not save model skeleton: {e}")
+
+        print("Pre-computing master templates for active session...")
+        try:
+            compute_master_templates()
+        except Exception as e:
+            print(f"Warning: Could not pre-compute master templates on startup: {e}")
+        print("Background initialization complete.")
+
+    thread = threading.Thread(target=_init_background, daemon=True)
+    thread.start()
+    print("Server ready. Background initialization started in separate thread.")
+
 
 @app.get("/api/dataset-info")
 def get_dataset_info():
