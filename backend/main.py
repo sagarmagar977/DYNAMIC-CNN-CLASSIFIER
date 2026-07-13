@@ -16,7 +16,7 @@ from model_utils import (
     train_cnn_model, run_inference, extract_activation_maps, STATUS_PATH, MODEL_PATH,
     CLASSES, auto_detect_and_crop_face, get_active_classes, get_active_dataset_dir,
     get_active_templates_path, get_active_metadata_path, update_active_session_metadata,
-    activate_session, list_sessions, get_session_details, SESSIONS_DIR, supabase
+    activate_session, list_sessions, get_session_details, SESSIONS_DIR, supabase, list_all_storage_files
 )
 
 app = FastAPI(title="Barca Footballer CNN Classifier")
@@ -88,7 +88,7 @@ def get_dataset_info():
     for player in active_classes:
         if supabase is not None:
             try:
-                files = supabase.storage.from_("datasets").list(f"{active_id}/{player}")
+                files = list_all_storage_files("datasets", f"{active_id}/{player}")
                 count = len([f for f in files if f["name"].lower().endswith(('.jpg', '.jpeg', '.png'))]) if files else 0
                 info[player] = count
             except Exception:
@@ -309,12 +309,15 @@ def delete_session(session_id: str):
             for class_name in details.get("classes", []):
                 storage_path = f"{session_id}/{class_name}"
                 try:
-                    files = supabase.storage.from_("datasets").list(storage_path)
+                    files = list_all_storage_files("datasets", storage_path)
                     if files:
                         to_remove = [f"{storage_path}/{f['name']}" for f in files]
-                        supabase.storage.from_("datasets").remove(to_remove)
-                except Exception:
-                    pass
+                        # Supabase remove takes chunks of max 100, but let's send them
+                        # in chunks to prevent RLS/parameter overflows
+                        for chunk_idx in range(0, len(to_remove), 100):
+                            supabase.storage.from_("datasets").remove(to_remove[chunk_idx:chunk_idx+100])
+                except Exception as e:
+                    print(f"Error removing files during session delete: {e}")
             try:
                 supabase.storage.from_("datasets").remove([f"{session_id}/master_templates.json"])
             except Exception:
@@ -485,7 +488,7 @@ def export_session(session_id: str, background_tasks: BackgroundTasks):
             if supabase is not None:
                 storage_path = f"{session_id}/{class_name}"
                 try:
-                    files = supabase.storage.from_("datasets").list(storage_path)
+                    files = list_all_storage_files("datasets", storage_path)
                     if files:
                         for f_info in files:
                             fname = f_info["name"]
@@ -494,8 +497,8 @@ def export_session(session_id: str, background_tasks: BackgroundTasks):
                                 if fdata:
                                     with open(os.path.join(local_path, "dataset", class_name, fname), 'wb') as img_f:
                                         img_f.write(fdata)
-                except Exception:
-                    pass
+                except Exception as e:
+                    print(f"Error exporting files: {e}")
                     
         if supabase is not None:
             try:
@@ -624,7 +627,7 @@ def list_headshots(session_id: str, class_name: str):
     if supabase is not None:
         try:
             storage_path = f"{session_id}/{class_name}"
-            files = supabase.storage.from_("datasets").list(storage_path)
+            files = list_all_storage_files("datasets", storage_path)
             if files:
                 return sorted([f["name"] for f in files if f["name"].lower().endswith(('.jpg', '.jpeg', '.png'))])
         except Exception as e:

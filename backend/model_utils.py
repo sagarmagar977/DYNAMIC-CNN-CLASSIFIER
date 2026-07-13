@@ -205,7 +205,7 @@ def download_session_dataset_to_temp(session_id):
             class_dir = os.path.join(local_path, class_name)
             os.makedirs(class_dir, exist_ok=True)
             storage_path = f"{session_id}/{class_name}"
-            files = supabase.storage.from_("datasets").list(storage_path)
+            files = list_all_storage_files("datasets", storage_path)
             if files:
                 for file_info in files:
                     filename = file_info["name"]
