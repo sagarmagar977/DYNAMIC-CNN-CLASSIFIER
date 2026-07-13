@@ -323,7 +323,7 @@ def auto_migrate_legacy_dataset():
                             supabase.storage.from_("datasets").upload(
                                 path="barca_players/master_templates.json",
                                 file=f.read(),
-                                file_options={"content-type": "application/json", "upsert": "true"}
+                                file_options={"content-type": "application/json", "x-upsert": "true", "upsert": "true"}
                             )
                     except Exception as te:
                         print(f"Failed to upload templates during migration: {te}")
@@ -388,7 +388,7 @@ def auto_migrate_legacy_dataset():
                                             supabase.storage.from_("datasets").upload(
                                                 path=destination,
                                                 file=fd.read(),
-                                                file_options={"content-type": "image/jpeg" if filename.lower().endswith(('.jpg', '.jpeg')) else "image/png", "upsert": "true"}
+                                                file_options={"content-type": "image/jpeg" if filename.lower().endswith(('.jpg', '.jpeg')) else "image/png", "x-upsert": "true", "upsert": "true"}
                                             )
                                     except Exception as ue:
                                         print(f"Failed to upload {filename} in session {s_id}: {ue}")
@@ -408,7 +408,7 @@ def auto_migrate_legacy_dataset():
                                     supabase.storage.from_("datasets").upload(
                                         path=f"{s_id}/master_templates.json",
                                         file=f.read(),
-                                        file_options={"content-type": "application/json", "upsert": "true"}
+                                        file_options={"content-type": "application/json", "x-upsert": "true", "upsert": "true"}
                                     )
                                 print(f"Migrated master_templates.json for session '{s_id}' to Supabase Storage.")
                             except Exception as te:
@@ -819,13 +819,23 @@ def compute_master_templates():
                 templates[class_name] = avg_emb.tolist()
                 print(f"Generated Master Vector Template for {class_name} ({len(embeddings)} source frames).")
         _master_templates = templates
+        # Save templates locally
+        active_templates_path = get_active_templates_path()
+        try:
+            os.makedirs(os.path.dirname(active_templates_path), exist_ok=True)
+            with open(active_templates_path, 'w', encoding='utf-8') as f:
+                json.dump(templates, f)
+            print(f"Saved master templates locally to {active_templates_path}")
+        except Exception as e:
+            print(f"Warning: Could not save master templates locally: {e}")
+            
         if supabase is not None:
             try:
                 templates_json = json.dumps(templates)
                 supabase.storage.from_("datasets").upload(
                     path=f"{active_id}/master_templates.json",
                     file=templates_json.encode('utf-8'),
-                    file_options={"content-type": "application/json", "upsert": "true"}
+                    file_options={"content-type": "application/json", "x-upsert": "true", "upsert": "true"}
                 )
                 print(f"Uploaded master templates for session '{active_id}' to Supabase Storage.")
             except Exception as e:

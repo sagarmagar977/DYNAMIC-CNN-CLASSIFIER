@@ -380,7 +380,7 @@ def update_session_classes(session_id: str, data: SessionClassesSchema):
                                     supabase.storage.from_("datasets").upload(
                                         path=new_path,
                                         file=file_bytes,
-                                        file_options={"content-type": mime, "upsert": "true"}
+                                        file_options={"content-type": mime, "x-upsert": "true", "upsert": "true"}
                                     )
                                     supabase.storage.from_("datasets").remove([old_path])
                             except Exception:
@@ -591,7 +591,7 @@ async def import_session(file: UploadFile = File(...)):
                         supabase.storage.from_("datasets").upload(
                             path=f"{session_id}/master_templates.json",
                             file=mt_data.read(),
-                            file_options={"content-type": "application/json", "upsert": "true"}
+                            file_options={"content-type": "application/json", "x-upsert": "true", "upsert": "true"}
                         )
                 except Exception:
                     pass
