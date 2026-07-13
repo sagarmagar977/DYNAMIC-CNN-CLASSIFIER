@@ -1,15 +1,13 @@
-// Global variables
+
 let trainingChart = null;
 let pollInterval = null;
 let isTrainingActive = false;
-let activeTab = 'predict'; // 'predict' or 'models' or 'edit'
+let activeTab = 'predict'; 
 
-// Dynamic Session State
 let currentSessionId = 'barca_players';
 let sessionMetadata = null;
 let sessionsList = [];
 
-// DOM Elements
 const dashboardGrid = document.getElementById('dashboard-grid');
 const modelStatusBadge = document.getElementById('model-status-badge');
 
@@ -50,11 +48,9 @@ const toastEl = document.getElementById('toast');
 const croppedFaceContainer = document.getElementById('cropped-face-container');
 const croppedFacePreview = document.getElementById('cropped-face-preview');
 
-// Model Manager DOM
 const modelGrid = document.getElementById('model-grid');
 const importSessionFile = document.getElementById('import-session-file');
 
-// Gallery Modal DOM
 const galleryModal = document.getElementById('gallery-modal');
 const galleryTitle = document.getElementById('gallery-title');
 const galleryGrid = document.getElementById('gallery-grid');
@@ -62,7 +58,6 @@ const btnCloseGallery = document.getElementById('btn-close-gallery');
 const btnToggleBulkDelete = document.getElementById('btn-toggle-bulk-delete');
 const btnBulkDelete = document.getElementById('btn-bulk-delete');
 
-// Lightbox DOM
 const lightboxModal = document.getElementById('lightbox-modal');
 const lightboxImg = document.getElementById('lightbox-img');
 const lightboxCaption = document.getElementById('lightbox-caption');
@@ -71,21 +66,18 @@ const btnPrevLightbox = document.getElementById('btn-prev-lightbox');
 const btnNextLightbox = document.getElementById('btn-next-lightbox');
 const btnDeleteLightboxImg = document.getElementById('btn-delete-lightbox-img');
 
-// Gallery dynamic state
 let activeGalleryClass = '';
 let activeGalleryImages = [];
 let selectedGalleryImages = new Set();
 let isBulkDeleteMode = false;
 let activeLightboxIndex = -1;
 
-// Initialize
 document.addEventListener('DOMContentLoaded', () => {
     initChart();
     setupEventListeners();
     loadActiveSessionAndInit();
 });
 
-// Toast notification helper
 function showToast(message, duration = 3000) {
     toastEl.textContent = message;
     toastEl.classList.add('show');
@@ -94,7 +86,6 @@ function showToast(message, duration = 3000) {
     }, duration);
 }
 
-// Chart.js configuration
 function initChart() {
     const ctx = document.getElementById('trainingChart').getContext('2d');
     Chart.defaults.color = '#9ca3af';
@@ -108,7 +99,7 @@ function initChart() {
                 {
                     label: 'Train Loss',
                     data: [],
-                    borderColor: '#a50044', // Barca Red
+                    borderColor: '#a50044', 
                     backgroundColor: 'rgba(165, 0, 68, 0.1)',
                     borderWidth: 2,
                     borderDash: [5, 5],
@@ -127,7 +118,7 @@ function initChart() {
                 {
                     label: 'Train Acc',
                     data: [],
-                    borderColor: '#004d98', // Barca Blue
+                    borderColor: '#004d98', 
                     backgroundColor: 'rgba(0, 77, 152, 0.1)',
                     borderWidth: 2,
                     borderDash: [5, 5],
@@ -137,7 +128,7 @@ function initChart() {
                 {
                     label: 'Val Acc',
                     data: [],
-                    borderColor: '#edbb00', // Barca Gold
+                    borderColor: '#edbb00', 
                     backgroundColor: 'rgba(237, 187, 0, 0.2)',
                     borderWidth: 2,
                     yAxisID: 'y-acc',
@@ -184,22 +175,18 @@ function initChart() {
     });
 }
 
-// Setup Event Listeners
 function setupEventListeners() {
-    // Navigation Tabs
+    
     tabPredict.addEventListener('click', () => switchTab('predict'));
     tabModels.addEventListener('click', () => switchTab('models'));
     btnNewSession.addEventListener('click', handleCreateNewSession);
 
-    // Dynamic config updates
     sessionDisplayNameInput.addEventListener('blur', updateSessionConfig);
     sessionClassesCountInput.addEventListener('change', handleClassesCountChange);
     
-    // Train button
     btnTrainModel.addEventListener('click', startModelTraining);
     btnRetrainRedirect.addEventListener('click', handleRetrainRedirect);
 
-    // Sandbox Test Image Upload
     dropZone.addEventListener('click', () => testImageUpload.click());
     testImageUpload.addEventListener('change', (e) => {
         const file = e.target.files[0];
@@ -225,21 +212,17 @@ function setupEventListeners() {
         if (e.key === 'Enter') loadTestImageFromUrl();
     });
 
-    // Import Session
     importSessionFile.addEventListener('change', handleImportSession);
 
-    // Gallery Modal Events
     btnCloseGallery.addEventListener('click', () => galleryModal.classList.remove('show'));
     btnToggleBulkDelete.addEventListener('click', toggleBulkDeleteMode);
     btnBulkDelete.addEventListener('click', executeBulkDelete);
 
-    // Lightbox Events
     btnCloseLightbox.addEventListener('click', () => lightboxModal.classList.remove('show'));
     btnPrevLightbox.addEventListener('click', prevLightboxImage);
     btnNextLightbox.addEventListener('click', nextLightboxImage);
     btnDeleteLightboxImg.addEventListener('click', deleteActiveLightboxImage);
 
-    // Keyboard navigation for Lightbox
     document.addEventListener('keydown', (e) => {
         if (!lightboxModal.classList.contains('show')) return;
         if (e.key === 'Escape') lightboxModal.classList.remove('show');
@@ -248,15 +231,12 @@ function setupEventListeners() {
     });
 }
 
-// Switch between App view modes
 function switchTab(tabName) {
     activeTab = tabName;
     
-    // Remove active classes
     tabPredict.classList.remove('active');
     tabModels.classList.remove('active');
     
-    // Reset layout modes
     dashboardGrid.classList.remove('mode-predict', 'mode-edit', 'mode-manager');
     
     if (tabName === 'predict') {
@@ -275,7 +255,6 @@ function switchTab(tabName) {
     }
 }
 
-// Load current active session on load
 async function loadActiveSessionAndInit() {
     try {
         const res = await fetch('/api/dataset-info');
@@ -291,7 +270,6 @@ async function loadActiveSessionAndInit() {
     }
 }
 
-// Load metadata and classes for a specific session
 async function loadSessionMetadata(sessionId) {
     try {
         const res = await fetch(`/api/sessions`);
@@ -311,23 +289,17 @@ async function loadSessionMetadata(sessionId) {
             activeSessionIndicator.textContent = sessionMetadata.display_name;
         }
 
-        // Render inputs in Left Panel
         sessionDisplayNameInput.value = sessionMetadata.display_name;
         sessionClassesCountInput.value = sessionMetadata.classes.length;
         
-        // Render class upload cards
         renderClassCards(sessionMetadata.classes);
         
-        // Render counts
         await updateClassImageCounts();
 
-        // Render validation status curves in chart
         updateChartHistory(sessionMetadata.history);
 
-        // Update badge
         updateStatusBadge(sessionMetadata.status);
 
-        // Set training status logs
         if (sessionMetadata.status === 'completed') {
             trainingConsole.classList.remove('inactive');
             trainingStatusText.textContent = "Status: Completed";
@@ -357,7 +329,6 @@ async function loadSessionMetadata(sessionId) {
     }
 }
 
-// Check status to lock or unlock Sandbox
 function checkSessionTrainStatus() {
     if (!sessionMetadata) return;
     
@@ -366,7 +337,7 @@ function checkSessionTrainStatus() {
     if (isCompleted) {
         sandboxLockOverlay.style.display = 'none';
     } else {
-        // Blur / Lock sandbox if not completed and we are in edit mode
+        
         if (activeTab === 'edit') {
             sandboxLockOverlay.style.display = 'flex';
         } else {
@@ -375,7 +346,6 @@ function checkSessionTrainStatus() {
     }
 }
 
-// Update status badge
 function updateStatusBadge(status) {
     if (status === 'completed') {
         modelStatusBadge.textContent = "Model Trained";
@@ -389,7 +359,6 @@ function updateStatusBadge(status) {
     }
 }
 
-// Render dynamic class upload cards
 function renderClassCards(classes) {
     playerCardsContainer.innerHTML = '';
     
@@ -430,17 +399,14 @@ function renderClassCards(classes) {
         playerCardsContainer.insertAdjacentHTML('beforeend', cardHtml);
     });
 
-    // Wire up events for inputs
     document.querySelectorAll('.class-name-input').forEach(input => {
         input.addEventListener('blur', handleClassNameBlur);
     });
 
-    // Wire upload button
     document.querySelectorAll('.train-upload-input').forEach(input => {
         input.addEventListener('change', handleClassFileUpload);
     });
 
-    // Wire drag & drop folders on each card
     document.querySelectorAll('.player-card').forEach(card => {
         const className = card.dataset.class;
         const key = className.toLowerCase().replace(/[^a-z0-9]/g, '_');
@@ -460,7 +426,6 @@ function renderClassCards(classes) {
             if (items) {
                 let filesList = [];
                 
-                // Helper to resolve files
                 const resolveEntry = (entry) => {
                     return new Promise((resolve) => {
                         if (entry.isFile) {
@@ -499,7 +464,6 @@ function renderClassCards(classes) {
                     read();
                 };
 
-                // Traverse entries
                 const promises = [];
                 for (let i = 0; i < items.length; i++) {
                     const item = items[i];
@@ -524,7 +488,6 @@ function renderClassCards(classes) {
         });
     });
 
-    // Wire Gallery Modal Button
     document.querySelectorAll('.btn-gallery').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const className = e.currentTarget.dataset.class;
@@ -533,7 +496,6 @@ function renderClassCards(classes) {
     });
 }
 
-// Update class image counts on cards
 async function updateClassImageCounts() {
     if (!sessionMetadata) return;
     try {
@@ -549,7 +511,6 @@ async function updateClassImageCounts() {
             info[className] = files.length;
         }
         
-        // Check if retraining/validation can be enabled
         const total = Object.values(info).reduce((a, b) => a + b, 0);
         if (total < sessionMetadata.classes.length) {
             btnTrainModel.disabled = true;
@@ -563,7 +524,6 @@ async function updateClassImageCounts() {
     }
 }
 
-// Rename session display name on blur
 async function updateSessionConfig() {
     const newName = sessionDisplayNameInput.value.trim();
     if (!newName || newName === sessionMetadata.display_name) return;
@@ -591,7 +551,6 @@ async function updateSessionConfig() {
     }
 }
 
-// Add or remove dynamic class cards when input changes
 async function handleClassesCountChange() {
     let count = parseInt(sessionClassesCountInput.value);
     if (isNaN(count) || count < 2) count = 2;
@@ -601,20 +560,18 @@ async function handleClassesCountChange() {
     let currentClasses = [...sessionMetadata.classes];
     
     if (count > currentClasses.length) {
-        // Append new classes
+        
         while (currentClasses.length < count) {
             currentClasses.push(`Class ${currentClasses.length + 1}`);
         }
     } else if (count < currentClasses.length) {
-        // Remove classes
+        
         currentClasses = currentClasses.slice(0, count);
     }
 
-    // Call backend to update classes
     await saveSessionClasses(currentClasses);
 }
 
-// Save modified class list to backend
 async function saveSessionClasses(newClasses) {
     try {
         const res = await fetch(`/api/sessions/${currentSessionId}/classes`, {
@@ -637,12 +594,11 @@ async function saveSessionClasses(newClasses) {
     }
 }
 
-// Handle renaming class names inside card inputs on blur
 async function handleClassNameBlur(e) {
     const idx = parseInt(e.target.dataset.index);
     const newName = e.target.value.trim();
     if (!newName) {
-        e.target.value = sessionMetadata.classes[idx]; // revert if empty
+        e.target.value = sessionMetadata.classes[idx]; 
         return;
     }
     
@@ -654,17 +610,15 @@ async function handleClassNameBlur(e) {
     await saveSessionClasses(updatedClasses);
 }
 
-// Handles selecting local files via the browse button
 function handleClassFileUpload(e) {
     const className = e.target.dataset.class;
     const files = e.target.files;
     if (files && files.length > 0) {
         triggerBatchUpload(className, Array.from(files));
     }
-    e.target.value = ''; // reset file input
+    e.target.value = ''; 
 }
 
-// Handles dynamic file batch upload queue for a class
 async function triggerBatchUpload(className, filesList) {
     const key = className.toLowerCase().replace(/[^a-z0-9]/g, '_');
     const container = document.getElementById(`progress-container-${key}`);
@@ -681,7 +635,6 @@ async function triggerBatchUpload(className, filesList) {
     textEl.textContent = `Uploading: 0 / ${total}`;
     fillEl.style.width = `0%`;
 
-    // Process in batches of 3 uploads concurrently
     const queue = [...filesList];
     const uploadNext = async () => {
         if (queue.length === 0) return;
@@ -709,11 +662,9 @@ async function triggerBatchUpload(className, filesList) {
         await uploadNext();
     };
 
-    // Spawn 3 concurrent workers
     const workers = [uploadNext(), uploadNext(), uploadNext()];
     await Promise.all(workers);
 
-    // Done uploading all
     textEl.textContent = `Upload Finished (${total} images)`;
     fillEl.style.width = `100%`;
     fillEl.classList.add('success-fill');
@@ -723,7 +674,6 @@ async function triggerBatchUpload(className, filesList) {
     await updateClassImageCounts();
 }
 
-// Start Model Training / K-Fold Validation
 async function startModelTraining() {
     if (isTrainingActive) return;
     
@@ -741,7 +691,6 @@ async function startModelTraining() {
             isTrainingActive = true;
             trainingConsole.classList.remove('inactive');
             
-            // Clear chart
             trainingChart.data.labels = [];
             trainingChart.data.datasets.forEach(d => d.data = []);
             trainingChart.update();
@@ -760,16 +709,14 @@ async function startModelTraining() {
     }
 }
 
-// Periodically check download and training status
 function startPollingStatus() {
-    if (pollInterval) return; // Already polling
+    if (pollInterval) return; 
     
     pollInterval = setInterval(async () => {
         try {
             const res = await fetch('/api/status');
             const data = await res.json();
             
-            // If training finished, handle it
             if (!data.training) {
                 if (isTrainingActive) {
                     isTrainingActive = false;
@@ -778,7 +725,7 @@ function startPollingStatus() {
                     
                     if (data.keras_logs && data.keras_logs.status === 'completed') {
                         showToast("K-Fold cross-validation completed! Templates cached.");
-                        // Reload metadata to update metrics history & unlock sandbox
+                        
                         await loadSessionMetadata(currentSessionId);
                         checkSessionTrainStatus();
                     } else if (data.keras_logs && data.keras_logs.status === 'failed') {
@@ -791,7 +738,6 @@ function startPollingStatus() {
                 return;
             }
             
-            // Handle Training Status
             if (data.training) {
                 isTrainingActive = true;
                 btnTrainModel.disabled = true;
@@ -818,7 +764,6 @@ function startPollingStatus() {
                             ? (history.val_accuracy[lossLen - 1] * 100).toFixed(1) + '%'
                             : '-';
                             
-                        // Sync Chart
                         updateChartHistory(history);
                     }
                 }
@@ -829,7 +774,6 @@ function startPollingStatus() {
     }, 1500);
 }
 
-// Load chart labels and history
 function updateChartHistory(history) {
     if (!history || !history.loss) return;
     const lossLen = history.loss.length;
@@ -842,12 +786,10 @@ function updateChartHistory(history) {
     trainingChart.update();
 }
 
-// Redirect Re-train button to dynamic edit view of current session
 function handleRetrainRedirect() {
     switchTab('edit');
 }
 
-// Check initial status on reload
 async function checkInitialStatus() {
     try {
         const res = await fetch('/api/status');
@@ -860,7 +802,6 @@ async function checkInitialStatus() {
     }
 }
 
-// Test image sandbox helpers
 function handleTestImage(file) {
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -972,9 +913,6 @@ function renderActivationMaps(maps) {
     });
 }
 
-// ==================== MODEL MANAGER LOGIC ====================
-
-// List sessions in Model Manager Grid
 async function loadSessionsGrid() {
     modelGrid.innerHTML = '<div class="placeholder-text"><i class="fa-solid fa-spinner fa-spin"></i> Loading session profiles...</div>';
     
@@ -1020,7 +958,6 @@ async function loadSessionsGrid() {
             modelGrid.insertAdjacentHTML('beforeend', cardHtml);
         });
 
-        // Wire up buttons
         document.querySelectorAll('.btn-activate-sess').forEach(btn => {
             btn.addEventListener('click', (e) => handleActivateSession(e.target.dataset.id));
         });
@@ -1040,7 +977,6 @@ async function loadSessionsGrid() {
     }
 }
 
-// Active session switching
 async function handleActivateSession(sessionId) {
     showToast("Switching active session...");
     try {
@@ -1058,14 +994,12 @@ async function handleActivateSession(sessionId) {
     }
 }
 
-// Edit Session profile - switches to 3-panel view
 async function handleEditSession(sessionId) {
     showToast(`Loading details for: ${sessionId}`);
     await loadSessionMetadata(sessionId);
     switchTab('edit');
 }
 
-// Create new session via top left button without popup prompts
 async function handleCreateNewSession() {
     showToast("Creating new session profile...");
     
@@ -1104,13 +1038,11 @@ async function handleCreateNewSession() {
     }
 }
 
-// Export profile download
 function handleExportSession(sessionId) {
     showToast("Preparing session zip archive...");
     window.location.href = `/api/sessions/${sessionId}/export`;
 }
 
-// Import profile zip upload
 async function handleImportSession(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -1136,10 +1068,9 @@ async function handleImportSession(e) {
         console.error(e);
         showToast("Error uploading import file.");
     }
-    e.target.value = ''; // reset
+    e.target.value = ''; 
 }
 
-// Delete session profile
 async function handleDeleteSession(sessionId) {
     const confirmDel = confirm(`Are you sure you want to delete session profile '${sessionId}'? This deletes all templates and crop images folder!`);
     if (!confirmDel) return;
@@ -1160,14 +1091,10 @@ async function handleDeleteSession(sessionId) {
     }
 }
 
-// ==================== HEADSHOT GALLERY & LIGHTBOX ====================
-
-// Open Headshot Gallery modal
 async function openHeadshotGallery(className) {
     activeGalleryClass = className;
     galleryTitle.textContent = `Headshot Gallery: ${className.toUpperCase()}`;
     
-    // Reset selection state
     selectedGalleryImages.clear();
     isBulkDeleteMode = false;
     btnToggleBulkDelete.innerHTML = '<i class="fa-solid fa-square-check"></i> Select Images';
@@ -1177,7 +1104,6 @@ async function openHeadshotGallery(className) {
     await loadGalleryGrid();
 }
 
-// Fetch images and render gallery grid
 async function loadGalleryGrid() {
     galleryGrid.innerHTML = '<div class="placeholder-text"><i class="fa-solid fa-spinner fa-spin"></i> Loading headshots...</div>';
     
@@ -1203,7 +1129,6 @@ async function loadGalleryGrid() {
             galleryGrid.insertAdjacentHTML('beforeend', itemHtml);
         });
 
-        // Wire grid items click
         document.querySelectorAll('.gallery-item').forEach(item => {
             item.addEventListener('click', (e) => {
                 const filename = e.currentTarget.dataset.filename;
@@ -1223,7 +1148,6 @@ async function loadGalleryGrid() {
     }
 }
 
-// Toggle bulk select mode
 function toggleBulkDeleteMode() {
     isBulkDeleteMode = !isBulkDeleteMode;
     selectedGalleryImages.clear();
@@ -1242,7 +1166,6 @@ function toggleBulkDeleteMode() {
     }
 }
 
-// Toggle selection on a single grid item
 function toggleSelectImage(element, filename) {
     if (selectedGalleryImages.has(filename)) {
         selectedGalleryImages.delete(filename);
@@ -1260,7 +1183,6 @@ function toggleSelectImage(element, filename) {
     }
 }
 
-// Execute bulk delete call
 async function executeBulkDelete() {
     const list = Array.from(selectedGalleryImages);
     const confirmDel = confirm(`Are you sure you want to bulk-delete ${list.length} headshots?`);
@@ -1288,14 +1210,12 @@ async function executeBulkDelete() {
     }
 }
 
-// Open Lightbox Slideshow Modal
 function openLightbox(index) {
     activeLightboxIndex = index;
     lightboxModal.classList.add('show');
     loadLightboxImage();
 }
 
-// Load active image inside lightbox
 function loadLightboxImage() {
     if (activeLightboxIndex < 0 || activeLightboxIndex >= activeGalleryImages.length) return;
     const filename = activeGalleryImages[activeLightboxIndex];
@@ -1305,7 +1225,6 @@ function loadLightboxImage() {
     lightboxCaption.textContent = `Image ${activeLightboxIndex + 1} of ${activeGalleryImages.length}: ${filename}`;
 }
 
-// Lightbox navigation functions
 function prevLightboxImage() {
     if (activeGalleryImages.length <= 1) return;
     activeLightboxIndex = (activeLightboxIndex - 1 + activeGalleryImages.length) % activeGalleryImages.length;
@@ -1318,7 +1237,6 @@ function nextLightboxImage() {
     loadLightboxImage();
 }
 
-// Delete single image inside lightbox
 async function deleteActiveLightboxImage() {
     if (activeLightboxIndex < 0) return;
     const filename = activeGalleryImages[activeLightboxIndex];
@@ -1335,16 +1253,15 @@ async function deleteActiveLightboxImage() {
         if (res.ok) {
             showToast("Image deleted successfully.");
             
-            // Remove image locally
             activeGalleryImages.splice(activeLightboxIndex, 1);
             await updateClassImageCounts();
 
             if (activeGalleryImages.length === 0) {
-                // If no images left, close lightbox and refresh gallery
+                
                 lightboxModal.classList.remove('show');
                 loadGalleryGrid();
             } else {
-                // Recalculate index bounds
+                
                 if (activeLightboxIndex >= activeGalleryImages.length) {
                     activeLightboxIndex = activeGalleryImages.length - 1;
                 }

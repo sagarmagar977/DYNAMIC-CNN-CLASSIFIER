@@ -5,13 +5,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>FC Barcelona CNN Player Classifier</title>
-    <!-- Google Fonts -->
+    
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
-    <!-- FontAwesome Icons -->
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Chart.js -->
+    
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -20,7 +20,6 @@
     <div class="glass-bg"></div>
     <div class="app-container">
 
-        <!-- Header -->
         <header class="app-header">
             <div class="logo-area">
                 <i class="fa-solid fa-futbol ball-icon"></i>
@@ -35,14 +34,12 @@
             </div>
         </header>
 
-        <!-- Action Bar between Header and Navbar -->
         <div class="action-bar" style="display: flex; justify-content: flex-start; padding: 10px 0; margin-bottom: 5px;">
             <button class="btn btn-primary" id="btn-new-session">
                 <i class="fa-solid fa-plus"></i> New Session
             </button>
         </div>
 
-        <!-- Navbar Tab Row below header -->
         <nav class="app-nav">
             <button class="nav-tab active" id="tab-predict" data-tab="predict">
                 <i class="fa-solid fa-circle-play"></i> Predict
@@ -52,10 +49,8 @@
             </button>
         </nav>
 
-        <!-- Main Grid Layout -->
         <main class="dashboard-grid mode-predict" id="dashboard-grid">
 
-            <!-- Left Panel: Dataset Manager & Hyperparams -->
             <section class="left-panel dashboard-card" id="panel-dataset-manager">
                 <div class="card-header">
                     <h2><i class="fa-solid fa-images icon-blue"></i> Dataset Manager</h2>
@@ -64,7 +59,6 @@
                     </button>
                 </div>
 
-                <!-- Session Configuration (Editable) -->
                 <div class="session-config-section">
                     <div class="param-group">
                         <label for="session-display-name">Session Name</label>
@@ -87,12 +81,10 @@
                 <p class="section-desc" style="margin-top: 10px;">Upload folder images to the classes below to build the
                     dataset.</p>
 
-                <!-- Player Cards Grid (Populated dynamically) -->
                 <div class="player-cards" id="player-cards-container">
-                    <!-- Dynamic cards go here -->
+                    
                 </div>
 
-                <!-- Training Parameters -->
                 <div class="hyperparams-section" style="margin-top: auto;">
                     <button class="btn btn-secondary btn-block" id="btn-train-model">
                         <i class="fa-solid fa-gears"></i> Run Vector Space Cross-Validation
@@ -100,7 +92,6 @@
                 </div>
             </section>
 
-            <!-- Middle Panel: Live Training Dashboard -->
             <section class="middle-panel dashboard-card" id="panel-validation">
                 <div class="card-header">
                     <h2><i class="fa-solid fa-chart-line icon-red"></i> Validation Progress</h2>
@@ -109,7 +100,6 @@
                     </button>
                 </div>
 
-                <!-- Training Console / Status -->
                 <div id="training-console" class="training-console inactive">
                     <div class="status-indicator">
                         <span class="status-pulse" id="status-pulse-dot"></span>
@@ -138,13 +128,11 @@
                     </div>
                 </div>
 
-                <!-- Charts -->
                 <div class="chart-container">
                     <canvas id="trainingChart"></canvas>
                 </div>
             </section>
 
-            <!-- Right Panel: Inference Playground & Activation Maps -->
             <section class="right-panel dashboard-card" id="panel-inference">
                 <div class="active-session-title-large" id="active-session-name-indicator" style="font-size: 1.6rem; font-weight: 700; color: var(--barca-gold); margin-bottom: 5px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; text-shadow: 0 0 10px rgba(237, 187, 0, 0.2);">Barcelona Players</div>
                 <div class="card-header" style="border-bottom: none; padding-bottom: 0;">
@@ -154,7 +142,7 @@
                     it using the CNN and view convolutional feature maps.</p>
 
                 <div class="inference-sandbox">
-                    <!-- Drop Zone -->
+                    
                     <div class="drop-zone" id="drop-zone">
                         <i class="fa-solid fa-images drop-icon"></i>
                         <p>Drag & Drop player image here, or <span>browse</span></p>
@@ -162,13 +150,11 @@
                         <img id="preview-img" class="preview-img" alt="Test Image Preview">
                     </div>
 
-                    <!-- URL Import -->
                     <div class="url-input-row">
                         <input type="text" id="test-image-url" placeholder="Or paste image URL...">
                         <button class="btn btn-secondary" id="btn-load-url">Load URL</button>
                     </div>
 
-                    <!-- Cropped Face Preview (Directly below upload preview) -->
                     <div id="cropped-face-container"
                         style="display: none; margin: 15px 0; text-align: center; background: rgba(255,255,255,0.03); border: 1px dashed var(--border-color); border-radius: 12px; padding: 15px;">
                         <p class="section-desc" style="margin-bottom: 8px; font-weight: 600; color: var(--barca-gold);">
@@ -185,13 +171,12 @@
                         </div>
                     </div>
 
-                    <!-- Activation Maps (First Conv Layer) -->
                     <div class="activation-maps-section" id="activation-maps-section">
                         <h3><i class="fa-solid fa-eye icon-blue"></i> First Layer Conv Activations (Feature Maps)</h3>
                         <p class="section-desc">Visualization of the 16 feature maps from the first convolutional layer
                             showing how the CNN extracts shapes, textures, and borders.</p>
                         <div class="activation-grid" id="activation-grid">
-                            <!-- JS will load images here -->
+                            
                             <div class="placeholder-maps">
                                 <i class="fa-solid fa-microscope"></i>
                                 <p>Feature maps will display here after successful prediction.</p>
@@ -200,7 +185,6 @@
                     </div>
                 </div>
 
-                <!-- Locked Sandbox Overlay -->
                 <div class="sandbox-overlay-lock" id="sandbox-lock-overlay" style="display: none;">
                     <i class="fa-solid fa-lock"></i>
                     <h3>Inference Locked</h3>
@@ -209,7 +193,6 @@
                 </div>
             </section>
 
-            <!-- Model Manager Panel (Exposed dynamically) -->
             <section class="model-manager-view" id="panel-model-manager">
                 <div class="card-header">
                     <h2><i class="fa-solid fa-folder-open icon-blue"></i> Model Manager</h2>
@@ -223,12 +206,11 @@
                 <p class="section-desc">Create, switch, rename, export, import, or delete your dynamic model profiles.
                 </p>
                 <div class="model-grid" id="model-grid">
-                    <!-- Dynamic session cards go here -->
+                    
                 </div>
             </section>
         </main>
 
-        <!-- Headshots Gallery Modal -->
         <div id="gallery-modal" class="modal">
             <div class="modal-content">
                 <div class="modal-header">
@@ -243,16 +225,15 @@
                         <span class="close-btn" id="btn-close-gallery">&times;</span>
                     </div>
                 </div>
-                <!-- Grid View -->
+                
                 <div class="gallery-grid-wrapper">
                     <div class="gallery-grid" id="gallery-grid">
-                        <!-- Headshots loaded dynamically -->
+                        
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Lightbox Slideshow Modal -->
         <div id="lightbox-modal" class="lightbox">
             <span class="lightbox-close" id="btn-close-lightbox">&times;</span>
             <div class="lightbox-content">
@@ -266,16 +247,14 @@
             </button>
         </div>
 
-        <!-- Toast Notification -->
         <div id="toast" class="toast"></div>
 
-        <!-- Footer -->
         <footer class="app-footer">
             <p>Més que un club. Powered by TensorFlow & Python FastAPI. Created for Barcelona Footballers Classifier.
             </p>
         </footer>
     </div>
-    <!-- App Script -->
+    
     <script src="app.js"></script>
 </body>
 

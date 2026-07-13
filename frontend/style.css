@@ -1,4 +1,4 @@
-/* Style System - FC Barcelona Themed CNN Classifier */
+
 :root {
     --bg-dark: #0a0e1a;
     --card-bg: rgba(18, 25, 47, 0.65);
@@ -28,7 +28,6 @@ body {
     position: relative;
 }
 
-/* Background floating glow effects */
 .glass-bg {
     position: fixed;
     top: 0;
@@ -73,7 +72,6 @@ body {
     }
 }
 
-/* App Container */
 .app-container {
     max-width: 1600px;
     margin: 0 auto;
@@ -84,7 +82,6 @@ body {
     gap: 20px;
 }
 
-/* Header */
 .app-header {
     display: flex;
     justify-content: space-between;
@@ -166,7 +163,6 @@ body {
     box-shadow: 0 0 10px rgba(16, 185, 129, 0.4);
 }
 
-/* Dashboard Grid Layout */
 .dashboard-grid {
     display: grid;
     grid-template-columns: 1.1fr 0.9fr 1fr;
@@ -180,7 +176,6 @@ body {
     }
 }
 
-/* Cards style */
 .dashboard-card {
     background: var(--card-bg);
     border: 1px solid var(--border-color);
@@ -222,7 +217,6 @@ body {
     line-height: 1.5;
 }
 
-/* Buttons */
 .btn {
     font-family: inherit;
     font-weight: 600;
@@ -274,7 +268,6 @@ body {
     cursor: not-allowed;
 }
 
-/* Player Cards Grid */
 .player-cards {
     display: flex;
     flex-direction: column;
@@ -363,7 +356,6 @@ body {
     gap: 5px;
 }
 
-/* Upload input */
 .upload-btn-wrapper {
     position: relative;
     overflow: hidden;
@@ -398,7 +390,6 @@ body {
     cursor: pointer;
 }
 
-/* Hyperparams */
 .hyperparams-section {
     border-top: 1px solid var(--border-color);
     padding-top: 15px;
@@ -447,7 +438,6 @@ body {
     border-color: var(--barca-gold);
 }
 
-/* Training progress dashboard */
 .training-console {
     background: rgba(0, 0, 0, 0.25);
     border-radius: 12px;
@@ -538,7 +528,6 @@ body {
     position: relative;
 }
 
-/* Inference sandbox */
 .inference-sandbox {
     display: flex;
     flex-direction: column;
@@ -619,7 +608,6 @@ body {
     border-color: var(--barca-blue);
 }
 
-/* Prediction results */
 .prediction-results {
     background: rgba(0, 0, 0, 0.2);
     border: 1px solid var(--border-color);
@@ -684,7 +672,6 @@ body {
 .pred-yamal { background: linear-gradient(90deg, var(--barca-red), #e11d48); }
 .pred-lewandowski { background: linear-gradient(90deg, var(--barca-gold), #facc15); }
 
-/* Activation maps */
 .activation-maps-section {
     border-top: 1px solid var(--border-color);
     padding-top: 15px;
@@ -742,7 +729,6 @@ body {
     border-color: var(--barca-gold);
 }
 
-/* Toast */
 .toast {
     position: fixed;
     bottom: 25px;
@@ -766,7 +752,6 @@ body {
     opacity: 1;
 }
 
-/* Footer */
 .app-footer {
     text-align: center;
     font-size: 0.75rem;
@@ -776,9 +761,6 @@ body {
     margin-top: auto;
 }
 
-/* ==================== REDESIGN ADDITIONS ==================== */
-
-/* Navigation Tabs Bar */
 .app-nav {
     display: flex;
     gap: 15px;
@@ -815,7 +797,6 @@ body {
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
 }
 
-/* Dashboard Grid Layout Modes */
 .dashboard-grid.mode-predict {
     grid-template-columns: 1fr 1fr;
 }
@@ -856,7 +837,6 @@ body {
     order: 3;
 }
 
-/* Model Manager View */
 .model-manager-view {
     grid-column: 1 / -1;
     display: none;
@@ -955,7 +935,6 @@ body {
     box-shadow: 0 0 10px rgba(237, 187, 0, 0.4);
 }
 
-/* Session Config Form */
 .session-config-section {
     background: rgba(255, 255, 255, 0.02);
     border: 1px solid var(--border-color);
@@ -993,7 +972,6 @@ body {
     box-shadow: 0 0 8px rgba(0, 77, 152, 0.3);
 }
 
-/* Locked Sandbox Overlay */
 .sandbox-overlay-lock {
     position: absolute;
     top: 0;
@@ -1031,7 +1009,6 @@ body {
     line-height: 1.5;
 }
 
-/* Modals & Gallery Styling */
 .modal {
     display: none;
     position: fixed;
@@ -1148,7 +1125,6 @@ body {
     font-size: 0.75rem;
 }
 
-/* Lightbox Slideshow */
 .lightbox {
     display: none;
     position: fixed;
@@ -1223,7 +1199,6 @@ body {
     background: linear-gradient(135deg, var(--barca-red), #e11d48);
 }
 
-/* Upload progress custom styling inside card */
 .upload-progress-container {
     width: 100%;
     margin-top: 10px;
@@ -1257,7 +1232,6 @@ body {
     background: #10b981 !important;
 }
 
-/* Class card inputs styling */
 .class-name-input {
     background: transparent;
     border: none;
@@ -1276,7 +1250,6 @@ body {
     border-color: var(--barca-blue);
 }
 
-/* Mobile Responsive Adjustments */
 @media (max-width: 1024px) {
     .dashboard-grid {
         display: flex !important;
