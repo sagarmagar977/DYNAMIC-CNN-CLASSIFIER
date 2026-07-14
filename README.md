@@ -11,7 +11,22 @@ A lightweight, plug-and-play face recognition engine that implements the same ma
 
 ## 🧠 Deep Learning Pipeline
 
-### Prediction / Inference Flow:
+### 1. Pre-Processing: OpenCV DNN Face Cropping (Applied to both Train & Test)
+Before any model calculations occur, both the training dataset and test/inference images are processed through the same face alignment pipeline:
+*   **Face Detection**: The raw image is passed to an **OpenCV ResNet-10 Caffe SSD face detector** (automatically downloads config and model weights).
+*   **Precision Cropping**: The detector crops the face area with a center-seeking square, padded to 130% to preserve crucial structural jaw/hair bounds, and resizes it to 112×112px.
+*   **Unified Inputs**: This ensures that both the generated master templates (during training) and the query vectors (during testing) are computed strictly from normalized, cropped facial areas, eliminating background noise.
+
+### 2. How "Training" Works (K-Fold Validation & Template Generation)
+Instead of standard training via backpropagation, the neural network backbone (MobileFaceNet) is completely frozen to prevent overfitting and fit constrained server environments:
+1.  **Stratified K-Fold Cross-Validation**: Splits the pre-processed dataset embeddings into stratified folds to test performance.
+2.  **Master Template Math**: For each class, the system calculates the **Master Vector Template** by computing the mean of all training embeddings and then L2-normalizing it.
+3.  **Fold Evaluation**: The validation split's embeddings are matched against these temporary templates to calculate validation loss ($1 - \text{similarity}$) and accuracy in real-time.
+4.  **Final Generation**: Once cross-validation completes, the system generates and saves the final Master Templates to Supabase.
+
+### 3. How "Prediction" Works (On-the-Fly Cosine Similarity)
+The prediction pipeline matches the query face embedding against the stored class master templates:
+
 ```text
    [ Input Image File / URL ]
                 |
@@ -42,7 +57,6 @@ A lightweight, plug-and-play face recognition engine that implements the same ma
 
 ### Core Deep Learning Mechanisms:
 *   **Plug-and-Play Sessions**: Adding classes does not update neural network weights. Instead, it recalculates **Master Class Templates** (the mean embedding vector of all training embeddings).
-*   **Stratified K-Fold Validation**: Automatically splits the active session dataset into stratified splits, evaluates local templates on validation folds, and reports metrics (loss defined as $1 - \text{similarity}$) in real-time.
 *   **Explainability (XAI)**: Renders the first 16 convolutional channel activation maps using Matplotlib's viridis color scheme to visualize structural features (edges, textures).
 
 ---
