@@ -4,7 +4,7 @@ const API_BASE = (window.location.hostname === 'localhost' || window.location.ho
 
 if (API_BASE) {
     const originalFetch = window.fetch;
-    window.fetch = function(input, init) {
+    window.fetch = function (input, init) {
         if (typeof input === 'string' && input.startsWith('/api')) {
             input = API_BASE + input;
         }
@@ -15,7 +15,7 @@ if (API_BASE) {
 let trainingChart = null;
 let pollInterval = null;
 let isTrainingActive = false;
-let activeTab = 'predict'; 
+let activeTab = 'predict';
 
 let currentSessionId = 'barca_players';
 let sessionMetadata = null;
@@ -41,6 +41,13 @@ const epochsInput = document.getElementById('epochs');
 const playerCardsContainer = document.getElementById('player-cards-container');
 const btnTrainModel = document.getElementById('btn-train-model');
 const btnRetrainRedirect = document.getElementById('btn-retrain-redirect');
+
+const sessionEditorModal = document.getElementById('session-editor-modal');
+const modalEditDisplayName = document.getElementById('modal-edit-display-name');
+const modalEditDisplayMessage = document.getElementById('modal-edit-display-message');
+const btnModalSaveSession = document.getElementById('btn-modal-save-session');
+const btnCloseSessionEditor = document.getElementById('btn-close-session-editor');
+const inferenceWelcomeMessage = document.getElementById('inference-welcome-message');
 
 const trainingConsole = document.getElementById('training-console');
 const statusPulseDot = document.getElementById('status-pulse-dot');
@@ -114,7 +121,7 @@ function initChart() {
                 {
                     label: 'Train Loss',
                     data: [],
-                    borderColor: '#a50044', 
+                    borderColor: '#a50044',
                     backgroundColor: 'rgba(165, 0, 68, 0.1)',
                     borderWidth: 2,
                     borderDash: [5, 5],
@@ -133,7 +140,7 @@ function initChart() {
                 {
                     label: 'Train Acc',
                     data: [],
-                    borderColor: '#004d98', 
+                    borderColor: '#004d98',
                     backgroundColor: 'rgba(0, 77, 152, 0.1)',
                     borderWidth: 2,
                     borderDash: [5, 5],
@@ -143,7 +150,7 @@ function initChart() {
                 {
                     label: 'Val Acc',
                     data: [],
-                    borderColor: '#edbb00', 
+                    borderColor: '#edbb00',
                     backgroundColor: 'rgba(237, 187, 0, 0.2)',
                     borderWidth: 2,
                     yAxisID: 'y-acc',
@@ -180,7 +187,7 @@ function initChart() {
                     min: 0,
                     max: 1.0,
                     ticks: {
-                        callback: function(value) {
+                        callback: function (value) {
                             return (value * 100) + '%';
                         }
                     }
@@ -191,14 +198,14 @@ function initChart() {
 }
 
 function setupEventListeners() {
-    
+
     tabPredict.addEventListener('click', () => switchTab('predict'));
     tabModels.addEventListener('click', () => switchTab('models'));
     btnNewSession.addEventListener('click', handleCreateNewSession);
 
     sessionDisplayNameInput.addEventListener('blur', updateSessionConfig);
     sessionClassesCountInput.addEventListener('change', handleClassesCountChange);
-    
+
     btnTrainModel.addEventListener('click', startModelTraining);
     btnRetrainRedirect.addEventListener('click', handleRetrainRedirect);
 
@@ -207,7 +214,7 @@ function setupEventListeners() {
         const file = e.target.files[0];
         if (file) handleTestImage(file);
     });
-    
+
     dropZone.addEventListener('dragover', (e) => {
         e.preventDefault();
         dropZone.classList.add('dragover');
@@ -221,7 +228,7 @@ function setupEventListeners() {
         const file = e.dataTransfer.files[0];
         if (file) handleTestImage(file);
     });
-    
+
     btnLoadUrl.addEventListener('click', loadTestImageFromUrl);
     testImageUrl.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') loadTestImageFromUrl();
@@ -244,16 +251,18 @@ function setupEventListeners() {
         else if (e.key === 'ArrowLeft') prevLightboxImage();
         else if (e.key === 'ArrowRight') nextLightboxImage();
     });
+    btnModalSaveSession.addEventListener('click', saveSessionSettings);
+    btnCloseSessionEditor.addEventListener('click', () => sessionEditorModal.classList.remove('show'));
 }
 
 function switchTab(tabName) {
     activeTab = tabName;
-    
+
     tabPredict.classList.remove('active');
     tabModels.classList.remove('active');
-    
+
     dashboardGrid.classList.remove('mode-predict', 'mode-edit', 'mode-manager', 'has-prediction');
-    
+
     if (tabName === 'predict') {
         tabPredict.classList.add('active');
         dashboardGrid.classList.add('mode-predict');
@@ -276,7 +285,7 @@ async function loadActiveSessionAndInit() {
     try {
         const res = await fetch('/api/dataset-info');
         const data = await res.json();
-        
+
         currentSessionId = data.active_session_id;
         await loadSessionMetadata(currentSessionId);
         switchTab('predict');
@@ -293,7 +302,7 @@ async function loadSessionMetadata(sessionId) {
         const res = await fetch(`/api/sessions`);
         const sessions = await res.json();
         sessionsList = sessions;
-        
+
         sessionMetadata = sessions.find(s => s.id === sessionId);
         if (!sessionMetadata) {
             console.error(`Session metadata for ${sessionId} not found`);
@@ -307,11 +316,18 @@ async function loadSessionMetadata(sessionId) {
             activeSessionIndicator.textContent = sessionMetadata.display_name;
         }
 
+        if (inferenceWelcomeMessage) {
+            const customMessage = (sessionMetadata.history && sessionMetadata.history.display_message)
+                ? sessionMetadata.history.display_message
+                : "Import a test image of a player (drag & drop, upload, or paste URL) to classify it using the CNN and view convolutional feature maps.";
+            inferenceWelcomeMessage.textContent = customMessage;
+        }
+
         sessionDisplayNameInput.value = sessionMetadata.display_name;
         sessionClassesCountInput.value = sessionMetadata.classes.length;
-        
+
         renderClassCards(sessionMetadata.classes);
-        
+
         await updateClassImageCounts();
 
         updateChartHistory(sessionMetadata.history);
@@ -322,7 +338,7 @@ async function loadSessionMetadata(sessionId) {
             trainingConsole.classList.remove('inactive');
             trainingStatusText.textContent = "Status: Completed";
             trainingProgressFill.style.width = '100%';
-            
+
             const history = sessionMetadata.history || {};
             const lossLen = history.loss ? history.loss.length : 0;
             if (lossLen > 0) {
@@ -341,7 +357,7 @@ async function loadSessionMetadata(sessionId) {
             metricAccuracy.textContent = '-';
             metricValAcc.textContent = '-';
         }
-        
+
     } catch (e) {
         console.error("Error loading session metadata:", e);
     }
@@ -349,13 +365,13 @@ async function loadSessionMetadata(sessionId) {
 
 function checkSessionTrainStatus() {
     if (!sessionMetadata) return;
-    
+
     const isCompleted = (sessionMetadata.status === 'completed');
-    
+
     if (isCompleted) {
         sandboxLockOverlay.style.display = 'none';
     } else {
-        
+
         if (activeTab === 'edit') {
             sandboxLockOverlay.style.display = 'flex';
         } else {
@@ -379,7 +395,7 @@ function updateStatusBadge(status) {
 
 function renderClassCards(classes) {
     playerCardsContainer.innerHTML = '';
-    
+
     classes.forEach((className, index) => {
         const key = className.toLowerCase().replace(/[^a-z0-9]/g, '_');
         const cardHtml = `
@@ -428,7 +444,7 @@ function renderClassCards(classes) {
     document.querySelectorAll('.player-card').forEach(card => {
         const className = card.dataset.class;
         const key = className.toLowerCase().replace(/[^a-z0-9]/g, '_');
-        
+
         card.addEventListener('dragover', (e) => {
             e.preventDefault();
             card.classList.add('dragover');
@@ -439,11 +455,11 @@ function renderClassCards(classes) {
         card.addEventListener('drop', (e) => {
             e.preventDefault();
             card.classList.remove('dragover');
-            
+
             const items = e.dataTransfer.items;
             if (items) {
                 let filesList = [];
-                
+
                 const resolveEntry = (entry) => {
                     return new Promise((resolve) => {
                         if (entry.isFile) {
@@ -540,7 +556,7 @@ async function updateClassImageCounts() {
             }
             info[className] = files.length;
         }
-        
+
         const total = Object.values(info).reduce((a, b) => a + b, 0);
         if (total < sessionMetadata.classes.length) {
             btnTrainModel.disabled = true;
@@ -557,7 +573,7 @@ async function updateClassImageCounts() {
 async function updateSessionConfig() {
     const newName = sessionDisplayNameInput.value.trim();
     if (!newName || newName === sessionMetadata.display_name) return;
-    
+
     if (isDraftSession && draftSessionData) {
         draftSessionData.display_name = newName;
         sessionMetadata.display_name = newName;
@@ -568,7 +584,7 @@ async function updateSessionConfig() {
         showToast(`Draft session display name updated to: ${newName}`);
         return;
     }
-    
+
     try {
         const res = await fetch(`/api/sessions/${currentSessionId}/rename`, {
             method: 'POST',
@@ -599,14 +615,14 @@ async function handleClassesCountChange() {
     sessionClassesCountInput.value = count;
 
     let currentClasses = [...sessionMetadata.classes];
-    
+
     if (count > currentClasses.length) {
-        
+
         while (currentClasses.length < count) {
             currentClasses.push(`Class ${currentClasses.length + 1}`);
         }
     } else if (count < currentClasses.length) {
-        
+
         currentClasses = currentClasses.slice(0, count);
     }
 
@@ -647,15 +663,15 @@ async function handleClassNameBlur(e) {
     const idx = parseInt(e.target.dataset.index);
     const newName = e.target.value.trim();
     if (!newName) {
-        e.target.value = sessionMetadata.classes[idx]; 
+        e.target.value = sessionMetadata.classes[idx];
         return;
     }
-    
+
     if (newName === sessionMetadata.classes[idx]) return;
-    
+
     const updatedClasses = [...sessionMetadata.classes];
     updatedClasses[idx] = newName;
-    
+
     await saveSessionClasses(updatedClasses);
 }
 
@@ -665,7 +681,7 @@ function handleClassFileUpload(e) {
     if (files && files.length > 0) {
         triggerBatchUpload(className, Array.from(files));
     }
-    e.target.value = ''; 
+    e.target.value = '';
 }
 
 async function triggerBatchUpload(className, filesList) {
@@ -688,7 +704,7 @@ async function triggerBatchUpload(className, filesList) {
 
     const total = filesList.length;
     let completed = 0;
-    
+
     textEl.textContent = `Uploading: 0 / ${total}`;
     fillEl.style.width = `0%`;
 
@@ -696,7 +712,7 @@ async function triggerBatchUpload(className, filesList) {
     const uploadNext = async () => {
         if (queue.length === 0) return;
         const file = queue.shift();
-        
+
         const formData = new FormData();
         formData.append('player', className);
         formData.append('file', file);
@@ -715,7 +731,7 @@ async function triggerBatchUpload(className, filesList) {
         } catch (e) {
             console.error("Upload error:", e);
         }
-        
+
         await uploadNext();
     };
 
@@ -733,25 +749,25 @@ async function triggerBatchUpload(className, filesList) {
 
 async function startModelTraining() {
     if (isTrainingActive) return;
-    
+
     const folds = epochsInput.value;
-    
+
     btnTrainModel.disabled = true;
     btnTrainModel.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Validating...';
-    
+
     try {
         const res = await fetch(`/api/sessions/${currentSessionId}/train?folds=${folds}`, { method: 'POST' });
         const data = await res.json();
-        
+
         if (data.status === 'started') {
             showToast("Vector space cross-validation started.");
             isTrainingActive = true;
             trainingConsole.classList.remove('inactive');
-            
+
             trainingChart.data.labels = [];
             trainingChart.data.datasets.forEach(d => d.data = []);
             trainingChart.update();
-            
+
             startPollingStatus();
         } else {
             showToast(data.message || "Failed to start validation.");
@@ -767,22 +783,22 @@ async function startModelTraining() {
 }
 
 function startPollingStatus() {
-    if (pollInterval) return; 
-    
+    if (pollInterval) return;
+
     pollInterval = setInterval(async () => {
         try {
             const res = await fetch('/api/status');
             const data = await res.json();
-            
+
             if (!data.training) {
                 if (isTrainingActive) {
                     isTrainingActive = false;
                     btnTrainModel.disabled = false;
                     btnTrainModel.innerHTML = '<i class="fa-solid fa-gears"></i> Run Vector Space Cross-Validation';
-                    
+
                     if (data.keras_logs && data.keras_logs.status === 'completed') {
                         showToast("K-Fold cross-validation completed! Templates cached.");
-                        
+
                         await loadSessionMetadata(currentSessionId);
                         checkSessionTrainStatus();
                     } else if (data.keras_logs && data.keras_logs.status === 'failed') {
@@ -794,25 +810,25 @@ function startPollingStatus() {
                 pollInterval = null;
                 return;
             }
-            
+
             if (data.training) {
                 isTrainingActive = true;
                 btnTrainModel.disabled = true;
                 btnTrainModel.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Validating...';
                 trainingConsole.classList.remove('inactive');
-                
+
                 if (data.keras_logs) {
                     const logs = data.keras_logs;
                     const curEpoch = logs.current_epoch || 0;
                     const totEpochs = logs.total_epochs || 5;
                     const percent = Math.round((curEpoch / totEpochs) * 100);
-                    
+
                     trainingStatusText.textContent = `Status: Validation (Fold ${curEpoch}/${totEpochs})`;
                     trainingProgressFill.style.width = `${percent}%`;
-                    
+
                     const history = logs.history || {};
                     const lossLen = history.loss ? history.loss.length : 0;
-                    
+
                     if (lossLen > 0) {
                         metricEpoch.textContent = `Fold ${curEpoch}`;
                         metricLoss.textContent = history.loss[lossLen - 1].toFixed(4);
@@ -820,7 +836,7 @@ function startPollingStatus() {
                         metricValAcc.textContent = history.val_accuracy && history.val_accuracy.length > 0
                             ? (history.val_accuracy[lossLen - 1] * 100).toFixed(1) + '%'
                             : '-';
-                            
+
                         updateChartHistory(history);
                     }
                 }
@@ -834,7 +850,7 @@ function startPollingStatus() {
 function updateChartHistory(history) {
     if (!history || !history.loss) return;
     const lossLen = history.loss.length;
-    const labels = Array.from({length: lossLen}, (_, i) => `Fold ${i + 1}`);
+    const labels = Array.from({ length: lossLen }, (_, i) => `Fold ${i + 1}`);
     trainingChart.data.labels = labels;
     trainingChart.data.datasets[0].data = history.loss;
     trainingChart.data.datasets[1].data = history.val_loss || [];
@@ -874,10 +890,10 @@ function loadTestImageFromUrl() {
     if (!url) return;
     previewImg.style.display = 'none';
     showToast("Attempting to load image from URL...");
-    
+
     const img = new Image();
     img.crossOrigin = "anonymous";
-    img.onload = function() {
+    img.onload = function () {
         const canvas = document.createElement('canvas');
         canvas.width = this.width;
         canvas.height = this.height;
@@ -890,7 +906,7 @@ function loadTestImageFromUrl() {
             predictImageFile(file);
         }, 'image/jpeg');
     };
-    img.onerror = function() {
+    img.onerror = function () {
         showToast("CORS blocked direct load. Please download image and drop it!");
     };
     img.src = url;
@@ -900,7 +916,7 @@ async function predictImageFile(file) {
     dashboardGrid.classList.remove('has-prediction');
     const formData = new FormData();
     formData.append('file', file);
-    
+
     croppedFaceContainer.style.display = 'none';
     resultsList.innerHTML = '<p class="placeholder-text"><i class="fa-solid fa-spinner fa-spin"></i> Running CNN inference...</p>';
     activationGrid.innerHTML = `
@@ -909,11 +925,11 @@ async function predictImageFile(file) {
             <p>Extracting convolutional activations...</p>
         </div>
     `;
-    
+
     try {
         const res = await fetch('/api/predict', { method: 'POST', body: formData });
         const data = await res.json();
-        
+
         if (res.ok) {
             if (data.cropped_face) {
                 croppedFacePreview.src = 'data:image/jpeg;base64,' + data.cropped_face;
@@ -939,7 +955,7 @@ function renderPredictions(predictions) {
         resultsList.innerHTML = '<p class="placeholder-text">No predictions found.</p>';
         return;
     }
-    
+
     predictions.forEach(pred => {
         const percent = (pred.confidence * 100).toFixed(1);
         const itemHtml = `
@@ -974,12 +990,12 @@ function renderActivationMaps(maps) {
 
 async function loadSessionsGrid() {
     modelGrid.innerHTML = '<div class="placeholder-text"><i class="fa-solid fa-spinner fa-spin"></i> Loading session profiles...</div>';
-    
+
     try {
         const res = await fetch('/api/sessions');
         const sessions = await res.json();
         sessionsList = sessions;
-        
+
         modelGrid.innerHTML = '';
         if (sessions.length === 0) {
             modelGrid.innerHTML = '<div class="placeholder-text">No sessions created yet. Click "+ New Session" to get started.</div>';
@@ -990,7 +1006,7 @@ async function loadSessionsGrid() {
             const date = new Date(sess.created_at).toLocaleDateString();
             const isActive = sess.is_active;
             const statusClass = sess.status;
-            
+
             const cardHtml = `
                 <div class="model-session-card ${isActive ? 'active-session' : ''}" data-id="${sess.id}">
                     ${isActive ? '<span class="active-badge"><i class="fa-solid fa-circle-check"></i> Active</span>' : ''}
@@ -1008,7 +1024,7 @@ async function loadSessionsGrid() {
                     </div>
                     <div class="model-card-actions">
                         ${!isActive ? `<button class="btn btn-primary btn-activate-sess" data-id="${sess.id}"><i class="fa-solid fa-play"></i> Activate</button>` : ''}
-                        <button class="btn btn-secondary btn-edit-sess" data-id="${sess.id}"><i class="fa-solid fa-pen-to-square"></i> Edit/Manage</button>
+                        <button class="btn btn-secondary btn-edit-sess" data-id="${sess.id}"><i class="fa-solid fa-pen-to-square"></i> Edit</button>
                         <button class="btn btn-secondary btn-export-sess" data-id="${sess.id}"><i class="fa-solid fa-file-zipper"></i> Export</button>
                         ${!isActive ? `<button class="btn btn-secondary btn-delete-sess" data-id="${sess.id}" style="border: 1px solid rgba(239, 68, 68, 0.4);"><i class="fa-solid fa-trash-can"></i> Delete</button>` : ''}
                     </div>
@@ -1018,18 +1034,18 @@ async function loadSessionsGrid() {
         });
 
         document.querySelectorAll('.btn-activate-sess').forEach(btn => {
-            btn.addEventListener('click', (e) => handleActivateSession(e.target.dataset.id));
+            btn.addEventListener('click', () => handleActivateSession(btn.dataset.id));
         });
         document.querySelectorAll('.btn-edit-sess').forEach(btn => {
-            btn.addEventListener('click', (e) => handleEditSession(e.target.dataset.id));
+            btn.addEventListener('click', () => handleEditSession(btn.dataset.id));
         });
         document.querySelectorAll('.btn-export-sess').forEach(btn => {
-            btn.addEventListener('click', (e) => handleExportSession(e.target.dataset.id));
+            btn.addEventListener('click', () => handleExportSession(btn.dataset.id));
         });
         document.querySelectorAll('.btn-delete-sess').forEach(btn => {
-            btn.addEventListener('click', (e) => handleDeleteSession(e.target.dataset.id));
+            btn.addEventListener('click', () => handleDeleteSession(btn.dataset.id));
         });
-        
+
     } catch (e) {
         console.error(e);
         modelGrid.innerHTML = '<div class="placeholder-text" style="color:#ef4444;"><i class="fa-solid fa-triangle-exclamation"></i> Error loading sessions from server.</div>';
@@ -1056,14 +1072,74 @@ async function handleActivateSession(sessionId) {
 async function handleEditSession(sessionId) {
     isDraftSession = false;
     draftSessionData = null;
-    showToast(`Loading details for: ${sessionId}`);
-    await loadSessionMetadata(sessionId);
-    switchTab('edit');
+    
+    // Find session details from sessionsList
+    const sess = sessionsList.find(s => s.id === sessionId);
+    if (!sess) {
+        showToast("Error locating session metadata.");
+        return;
+    }
+    
+    currentSessionId = sessionId;
+    sessionMetadata = sess;
+
+    // Populate modal fields
+    if (modalEditDisplayName) {
+        modalEditDisplayName.value = sess.display_name;
+    }
+    if (modalEditDisplayMessage) {
+        modalEditDisplayMessage.value = (sess.history && sess.history.display_message)
+            ? sess.history.display_message
+            : "Import a test image of a player (drag & drop, upload, or paste URL) to classify it using the CNN and view convolutional feature maps.";
+    }
+    
+    // Show the modal
+    if (sessionEditorModal) {
+        sessionEditorModal.classList.add('show');
+    }
+}
+
+async function saveSessionSettings() {
+    const newName = modalEditDisplayName.value.trim();
+    const newMessage = modalEditDisplayMessage.value.trim();
+    if (!newName) {
+        showToast("Session name cannot be empty.");
+        return;
+    }
+    
+    showToast("Saving session configurations...");
+    try {
+        const res = await fetch(`/api/sessions/${currentSessionId}/rename`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                display_name: newName,
+                display_message: newMessage
+            })
+        });
+        
+        if (res.ok) {
+            showToast("Session profile updated successfully.");
+            if (sessionEditorModal) {
+                sessionEditorModal.classList.remove('show');
+            }
+            // Reload metadata & active session welcome message
+            await loadSessionMetadata(currentSessionId);
+            // Refresh the grid
+            await loadSessionsGrid();
+        } else {
+            const err = await res.json();
+            showToast(`Failed to save: ${err.detail || 'Unknown error'}`);
+        }
+    } catch (e) {
+        console.error(e);
+        showToast("Error updating session profile settings.");
+    }
 }
 
 async function commitDraftSession() {
     if (!isDraftSession || !draftSessionData) return true;
-    
+
     showToast("Initializing session profile in database...");
     try {
         const res = await fetch('/api/sessions', {
@@ -1075,7 +1151,7 @@ async function commitDraftSession() {
                 classes: draftSessionData.classes
             })
         });
-        
+
         if (res.ok) {
             const data = await res.json();
             isDraftSession = false;
@@ -1097,13 +1173,13 @@ async function commitDraftSession() {
 
 async function handleCreateNewSession() {
     showToast("New draft session profile created. Switched to editor.");
-    
+
     isDraftSession = true;
     const timestamp = Date.now();
     const id = `session_${timestamp}`;
     const name = `New Session ${new Date().toLocaleDateString()}`;
     const classes = ["Class 1", "Class 2", "Class 3"];
-    
+
     draftSessionData = {
         id: id,
         display_name: name,
@@ -1112,10 +1188,10 @@ async function handleCreateNewSession() {
         is_active: false,
         history: { loss: [], accuracy: [], val_loss: [], val_accuracy: [] }
     };
-    
+
     currentSessionId = id;
     sessionMetadata = draftSessionData;
-    
+
     const activeSessionIndicator = document.getElementById('active-session-name-indicator');
     if (activeSessionIndicator) {
         activeSessionIndicator.textContent = name;
@@ -1123,14 +1199,14 @@ async function handleCreateNewSession() {
 
     sessionDisplayNameInput.value = name;
     sessionClassesCountInput.value = classes.length;
-    
+
     renderClassCards(classes);
     await updateClassImageCounts();
     updateChartHistory(draftSessionData.history);
     updateStatusBadge(draftSessionData.status);
-    
+
     switchTab('edit');
-    
+
     setTimeout(() => {
         sessionDisplayNameInput.focus();
         sessionDisplayNameInput.select();
@@ -1167,7 +1243,7 @@ async function handleImportSession(e) {
         console.error(e);
         showToast("Error uploading import file.");
     }
-    e.target.value = ''; 
+    e.target.value = '';
 }
 
 async function handleDeleteSession(sessionId) {
@@ -1193,7 +1269,7 @@ async function handleDeleteSession(sessionId) {
 async function openHeadshotGallery(className) {
     activeGalleryClass = className;
     galleryTitle.textContent = `Headshot Gallery: ${className.toUpperCase()}`;
-    
+
     selectedGalleryImages.clear();
     isBulkDeleteMode = false;
     btnToggleBulkDelete.innerHTML = '<i class="fa-solid fa-square-check"></i> Select Images';
@@ -1205,12 +1281,12 @@ async function openHeadshotGallery(className) {
 
 async function loadGalleryGrid() {
     galleryGrid.innerHTML = '<div class="placeholder-text"><i class="fa-solid fa-spinner fa-spin"></i> Loading headshots...</div>';
-    
+
     try {
         const res = await fetch(`/api/sessions/${currentSessionId}/dataset/${activeGalleryClass}`);
         const files = await res.json();
         activeGalleryImages = files;
-        
+
         galleryGrid.innerHTML = '';
         if (files.length === 0) {
             galleryGrid.innerHTML = '<div class="placeholder-text" style="grid-column:1/-1;">No headshot crops uploaded for this class yet.</div>';
@@ -1232,7 +1308,7 @@ async function loadGalleryGrid() {
             item.addEventListener('click', (e) => {
                 const filename = e.currentTarget.dataset.filename;
                 const index = parseInt(e.currentTarget.dataset.index);
-                
+
                 if (isBulkDeleteMode) {
                     toggleSelectImage(e.currentTarget, filename);
                 } else {
@@ -1294,13 +1370,13 @@ async function executeBulkDelete() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ filenames: list })
         });
-        
+
         if (res.ok) {
             showToast(`Deleted ${list.length} images successfully.`);
-            
+
             // Remove deleted files from local state
             activeGalleryImages = activeGalleryImages.filter(img => !list.includes(img));
-            
+
             // Update UI count element locally and instantly
             const key = activeGalleryClass.toLowerCase().replace(/[^a-z0-9]/g, '_');
             const countEl = document.getElementById(`count-${key}`);
@@ -1330,7 +1406,7 @@ function loadLightboxImage() {
     if (activeLightboxIndex < 0 || activeLightboxIndex >= activeGalleryImages.length) return;
     const filename = activeGalleryImages[activeLightboxIndex];
     const imgUrl = `/api/sessions/${currentSessionId}/dataset/${activeGalleryClass}/${filename}`;
-    
+
     lightboxImg.src = imgUrl;
     lightboxCaption.textContent = `Image ${activeLightboxIndex + 1} of ${activeGalleryImages.length}: ${filename}`;
 }
@@ -1359,13 +1435,13 @@ async function deleteActiveLightboxImage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ filenames: [filename] })
         });
-        
+
         if (res.ok) {
             showToast("Image deleted successfully.");
-            
+
             // Remove from local array
             activeGalleryImages.splice(activeLightboxIndex, 1);
-            
+
             // Update UI count element locally and instantly
             const key = activeGalleryClass.toLowerCase().replace(/[^a-z0-9]/g, '_');
             const countEl = document.getElementById(`count-${key}`);

@@ -138,7 +138,7 @@
                 <div class="card-header" style="border-bottom: none; padding-bottom: 0;">
                     <h2><i class="fa-solid fa-wand-magic-sparkles icon-gold"></i> Inference Sandbox</h2>
                 </div>
-                <p class="section-desc">Import a test image of a player (drag & drop, upload, or paste URL) to classify
+                <p class="section-desc" id="inference-welcome-message">Import a test image of a player (drag & drop, upload, or paste URL) to classify
                     it using the CNN and view convolutional feature maps.</p>
 
                 <div class="inference-sandbox">
@@ -209,6 +209,32 @@
                     
                 </div>
             </section>
+
+
+        <!-- Session Editor Modal popup -->
+        <div id="session-editor-modal" class="modal">
+            <div class="modal-content" style="max-width: 500px;">
+                <div class="modal-header">
+                    <h2><i class="fa-solid fa-pen-to-square icon-blue"></i> Edit Session Profile</h2>
+                    <span class="close-btn" id="btn-close-session-editor">&times;</span>
+                </div>
+                <div class="session-config-section" style="display: flex; flex-direction: column; gap: 15px; margin-top: 15px;">
+                    <div class="param-group" style="display: flex; flex-direction: column; gap: 5px;">
+                        <label for="modal-edit-display-name" style="font-weight: 600;">Model Name / Session Name</label>
+                        <input type="text" id="modal-edit-display-name" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.05); color: white;" placeholder="e.g. Barcelona Players">
+                    </div>
+                    <div class="param-group" style="display: flex; flex-direction: column; gap: 5px;">
+                        <label for="modal-edit-display-message" style="font-weight: 600;">Display Message for Inference Sandbox</label>
+                        <textarea id="modal-edit-display-message" rows="5" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.05); color: white; resize: vertical;" placeholder="Enter custom message to show in the inference sandbox..."></textarea>
+                    </div>
+                    <div style="display: flex; gap: 15px; margin-top: 10px;">
+                        <button class="btn btn-primary" id="btn-modal-save-session" style="flex: 1;">
+                            <i class="fa-solid fa-floppy-disk"></i> Save Changes
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
         </main>
 
         <div id="gallery-modal" class="modal">

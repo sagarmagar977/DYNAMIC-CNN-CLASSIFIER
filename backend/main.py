@@ -331,6 +331,7 @@ def activate_session_endpoint(session_id: str):
 
 class SessionRenameSchema(BaseModel):
     display_name: str
+    display_message: Optional[str] = None
 
 @app.post("/api/sessions/{session_id}/rename")
 def rename_session(session_id: str, data: SessionRenameSchema):
@@ -339,12 +340,22 @@ def rename_session(session_id: str, data: SessionRenameSchema):
         raise HTTPException(status_code=404, detail=f"Session {session_id} not found.")
     try:
         if supabase is not None:
-            res = supabase.table("sessions").update({"display_name": data.display_name}).eq("id", session_id).execute()
+            history = details.get("history", {})
+            if not isinstance(history, dict):
+                history = {}
+            if data.display_message is not None:
+                history["display_message"] = data.display_message
+            
+            res = supabase.table("sessions").update({
+                "display_name": data.display_name,
+                "history": history
+            }).eq("id", session_id).execute()
+            
             if res.data:
-                return {"status": "success", "message": f"Successfully renamed session display name to '{data.display_name}'.", "metadata": res.data[0]}
-        return {"status": "success", "message": f"Successfully renamed session display name to '{data.display_name}'.", "metadata": details}
+                return {"status": "success", "message": "Successfully updated session config.", "metadata": res.data[0]}
+        return {"status": "success", "message": "Successfully renamed session.", "metadata": details}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to rename session: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to update session: {str(e)}")
 
 class SessionClassesSchema(BaseModel):
     classes: List[str]
