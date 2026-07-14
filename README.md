@@ -1,5 +1,6 @@
 # Dynamic CNN Face Classifier
 
+#### Live link : https://dynamic-cnn-classifier.onrender.com
 A lightweight, plug-and-play face recognition engine that implements the same mathematical paradigm used in modern biometric systems like **Apple Face ID**:
 
 *   **One-Shot Enrollment**: Traditional image classifiers require retraining the neural network's final layers to recognize new faces. This system, like Face ID, bypasses retraining by mapping facial features to a **256-D face embedding vector** via a frozen, pre-trained feature extractor (MobileFaceNet).
