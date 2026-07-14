@@ -4,14 +4,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FC Barcelona CNN Player Classifier</title>
-    
+    <title>WHOAMI - DYNAMIC CNN Classifier</title>
+
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
-    
+
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -34,7 +34,8 @@
             </div>
         </header>
 
-        <div class="action-bar" style="display: flex; justify-content: flex-start; padding: 10px 0; margin-bottom: 5px;">
+        <div class="action-bar"
+            style="display: flex; justify-content: flex-start; padding: 10px 0; margin-bottom: 5px;">
             <button class="btn btn-primary" id="btn-new-session">
                 <i class="fa-solid fa-plus"></i> New Session
             </button>
@@ -82,7 +83,7 @@
                     dataset.</p>
 
                 <div class="player-cards" id="player-cards-container">
-                    
+
                 </div>
 
                 <div class="hyperparams-section" style="margin-top: 15px;">
@@ -134,15 +135,18 @@
             </section>
 
             <section class="right-panel dashboard-card" id="panel-inference">
-                <div class="active-session-title-large" id="active-session-name-indicator" style="font-size: 1.6rem; font-weight: 700; color: var(--barca-gold); margin-bottom: 5px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; text-shadow: 0 0 10px rgba(237, 187, 0, 0.2);">Barcelona Players</div>
+                <div class="active-session-title-large" id="active-session-name-indicator"
+                    style="font-size: 1.6rem; font-weight: 700; color: var(--barca-gold); margin-bottom: 5px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; text-shadow: 0 0 10px rgba(237, 187, 0, 0.2);">
+                    Barcelona Players</div>
                 <div class="card-header" style="border-bottom: none; padding-bottom: 0;">
                     <h2><i class="fa-solid fa-wand-magic-sparkles icon-gold"></i> Inference Sandbox</h2>
                 </div>
-                <p class="section-desc" id="inference-welcome-message">Import a test image of a player (drag & drop, upload, or paste URL) to classify
+                <p class="section-desc" id="inference-welcome-message">Import a test image of a player (drag & drop,
+                    upload, or paste URL) to classify
                     it using the CNN and view convolutional feature maps.</p>
 
                 <div class="inference-sandbox">
-                    
+
                     <div class="drop-zone" id="drop-zone">
                         <i class="fa-solid fa-images drop-icon"></i>
                         <p>Drag & Drop player image here, or <span>browse</span></p>
@@ -176,7 +180,7 @@
                         <p class="section-desc">Visualization of the 16 feature maps from the first convolutional layer
                             showing how the CNN extracts shapes, textures, and borders.</p>
                         <div class="activation-grid" id="activation-grid">
-                            
+
                             <div class="placeholder-maps">
                                 <i class="fa-solid fa-microscope"></i>
                                 <p>Feature maps will display here after successful prediction.</p>
@@ -206,35 +210,42 @@
                 <p class="section-desc">Create, switch, rename, export, import, or delete your dynamic model profiles.
                 </p>
                 <div class="model-grid" id="model-grid">
-                    
+
                 </div>
             </section>
 
 
-        <!-- Session Editor Modal popup -->
-        <div id="session-editor-modal" class="modal">
-            <div class="modal-content" style="max-width: 500px;">
-                <div class="modal-header">
-                    <h2><i class="fa-solid fa-pen-to-square icon-blue"></i> Edit Session Profile</h2>
-                    <span class="close-btn" id="btn-close-session-editor">&times;</span>
-                </div>
-                <div class="session-config-section" style="display: flex; flex-direction: column; gap: 15px; margin-top: 15px;">
-                    <div class="param-group" style="display: flex; flex-direction: column; gap: 5px;">
-                        <label for="modal-edit-display-name" style="font-weight: 600;">Model Name / Session Name</label>
-                        <input type="text" id="modal-edit-display-name" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.05); color: white;" placeholder="e.g. Barcelona Players">
+            <!-- Session Editor Modal popup -->
+            <div id="session-editor-modal" class="modal">
+                <div class="modal-content" style="max-width: 500px;">
+                    <div class="modal-header">
+                        <h2><i class="fa-solid fa-pen-to-square icon-blue"></i> Edit Session Profile</h2>
+                        <span class="close-btn" id="btn-close-session-editor">&times;</span>
                     </div>
-                    <div class="param-group" style="display: flex; flex-direction: column; gap: 5px;">
-                        <label for="modal-edit-display-message" style="font-weight: 600;">Display Message for Inference Sandbox</label>
-                        <textarea id="modal-edit-display-message" rows="5" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.05); color: white; resize: vertical;" placeholder="Enter custom message to show in the inference sandbox..."></textarea>
-                    </div>
-                    <div style="display: flex; gap: 15px; margin-top: 10px;">
-                        <button class="btn btn-primary" id="btn-modal-save-session" style="flex: 1;">
-                            <i class="fa-solid fa-floppy-disk"></i> Save Changes
-                        </button>
+                    <div class="session-config-section"
+                        style="display: flex; flex-direction: column; gap: 15px; margin-top: 15px;">
+                        <div class="param-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="modal-edit-display-name" style="font-weight: 600;">Model Name / Session
+                                Name</label>
+                            <input type="text" id="modal-edit-display-name"
+                                style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.05); color: white;"
+                                placeholder="e.g. Barcelona Players">
+                        </div>
+                        <div class="param-group" style="display: flex; flex-direction: column; gap: 5px;">
+                            <label for="modal-edit-display-message" style="font-weight: 600;">Display Message for
+                                Inference Sandbox</label>
+                            <textarea id="modal-edit-display-message" rows="5"
+                                style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.05); color: white; resize: vertical;"
+                                placeholder="Enter custom message to show in the inference sandbox..."></textarea>
+                        </div>
+                        <div style="display: flex; gap: 15px; margin-top: 10px;">
+                            <button class="btn btn-primary" id="btn-modal-save-session" style="flex: 1;">
+                                <i class="fa-solid fa-floppy-disk"></i> Save Changes
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
         </main>
 
         <div id="gallery-modal" class="modal">
@@ -251,10 +262,10 @@
                         <span class="close-btn" id="btn-close-gallery">&times;</span>
                     </div>
                 </div>
-                
+
                 <div class="gallery-grid-wrapper">
                     <div class="gallery-grid" id="gallery-grid">
-                        
+
                     </div>
                 </div>
             </div>
@@ -280,7 +291,7 @@
             </p>
         </footer>
     </div>
-    
+
     <script src="app.js"></script>
 </body>
 
