@@ -1,12 +1,55 @@
 # Dynamic CNN Face Classifier
 
-A lightweight, plug-and-play face recognition and classification engine. The system allows users to dynamically create isolated training sessions, add custom face classes, crawler-scrape images, evaluate models via real-time Stratified K-Fold validation, and analyze explainable CNN activation maps.
+A lightweight, plug-and-play face recognition engine that implements the same mathematical paradigm used in modern biometric systems like **Apple Face ID**:
+
+*   **One-Shot Enrollment**: Traditional image classifiers require retraining the neural network's final layers to recognize new faces. This system, like Face ID, bypasses retraining by mapping facial features to a **256-D face embedding vector** via a frozen, pre-trained feature extractor (MobileFaceNet).
+*   **Vector Comparisons**: During setup, the average embedding vector of a user's face is saved as a **Master Template**. During prediction, the scanned face is mapped to an embedding and compared using **Cosine Similarity** (calculating the dot product of the vectors). If the score exceeds a threshold, the face is recognized.
+*   **Cloud Architecture & Explainability**: The entire pipeline is wrapped in a unified **FastAPI server** that statically hosts frontend dashboard files, communicates with **Supabase** for database/storage cloud synchronization, and renders real-time Stratified K-Fold validation metrics and explainable CNN activation maps.
+*   **Real-World vs. Local Differences**: While consumer hardware uses active infrared 3D depth maps and local hardware-isolated Secure Enclave storage for anti-spoofing and security, this project demonstrates the identical algorithmic flow using standard 2D images and cloud databases.
 
 ---
 
-## 🏗️ Architecture & Hosting Flow
+## 🧠 Deep Learning Pipeline
 
-The system runs as a unified **FastAPI application** that exposes REST API endpoints and statically hosts the frontend single-page application (SPA).
+### Prediction / Inference Flow:
+```text
+   [ Input Image File / URL ]
+                |
+                v
+     +---------------------+
+     |  OpenCV ResNet-10   |  <-- Face detection utilizing a Caffe SSD model;
+     |   Caffe Face SSD    |      auto-downloads deploy.prototxt and weights.
+     +---------------------+
+                |
+                +----> Precise square face crop (padded to 130% & resized to 112x112)
+                v
+     +---------------------+
+     |    MobileFaceNet    |  <-- Cached feature extractor model;
+     |  (Frozen Extractor) |      all layers set to non-trainable.
+     +---------------------+
+                |
+                +----> Generates L2-normalized 256-Dimensional embedding vector.
+                v
+     +---------------------+
+     |  Cosine Similarity  |  <-- Calculates dot product of embedding against
+     |   Matcher Engine    |      each active Class Master Template.
+     +---------------------+
+                |
+                +----> Calculates: Score = Vector(Input) · Template(Class)
+                v
+   [ Ranked Cosine Similarities (Confidence Scores) & 16-Channel XAI Maps ]
+```
+
+### Core Deep Learning Mechanisms:
+*   **Plug-and-Play Sessions**: Adding classes does not update neural network weights. Instead, it recalculates **Master Class Templates** (the mean embedding vector of all training embeddings).
+*   **Stratified K-Fold Validation**: Automatically splits the active session dataset into stratified splits, evaluates local templates on validation folds, and reports metrics (loss defined as $1 - \text{similarity}$) in real-time.
+*   **Explainability (XAI)**: Renders the first 16 convolutional channel activation maps using Matplotlib's viridis color scheme to visualize structural features (edges, textures).
+
+---
+
+## 🏗️ Hosting & Architecture
+
+The application runs as a unified **FastAPI server** that exposes REST API endpoints and statically hosts the frontend single-page application (SPA).
 
 ```text
 +-----------------------------------------------------------------+
@@ -36,57 +79,18 @@ The system runs as a unified **FastAPI application** that exposes REST API endpo
 
 ---
 
-## 🧠 Deep Learning Pipeline
-
-### Prediction / Inference Flow:
-```text
-   [ Input Image File / URL ]
-                |
-                v
-     +---------------------+
-     |  OpenCV ResNet-10   |  <-- Auto-downloads deploy.prototxt & caffe weights
-     |   Caffe Face SSD    |
-     +---------------------+
-                |
-                +----> Precise square face crop (padded to 130% & resized to 112x112)
-                v
-     +---------------------+
-     |    MobileFaceNet    |  <-- Loaded from Supabase Storage / local cache;
-     |  (Frozen Extractor) |      all layers set to non-trainable
-     +---------------------+
-                |
-                +----> Generates L2-normalized 256-Dimensional embedding vector
-                v
-     +---------------------+
-     |  Cosine Similarity  |  <-- Calculates dot product of embedding against
-     |   Matcher Engine    |      each active Class Master Template
-     +---------------------+
-                |
-                +----> Calculates: Score = Vector(Input) · Template(Class)
-                v
-   [ Ranked Probabilities & 16-Channel Viridis Activation Maps ]
-```
-
-### Key Mechanisms:
-*   **Plug-and-Play Sessions**: Adding classes or retraining does not update neural network weights. Instead, it recalculates **Master Class Templates** (the average embedding vector of training photos).
-*   **Memory Optimization**: Restricts TensorFlow thread pools (`intra/inter_op = 1`) to fit within 512MB RAM server constraints.
-*   **Stratified K-Fold Validation**: Automatically splits active session training images into stratified splits, evaluates local templates on validation folds, and reports metrics.
-*   **Explainable AI**: Renders visual representation of the first 16 filters of the first convolutional layer.
-
----
-
 ## 📂 Project Layout
 
 ```text
 ├── backend/
-│   ├── main.py             # FastAPI router, CORS, session endpoints & static mounting
-│   ├── model_utils.py      # Face cropping, MobileFaceNet embedding, similarity & training
+│   ├── main.py             # FastAPI router, CORS setup, API routes & static mounting
+│   ├── model_utils.py      # Face cropping, MobileFaceNet embedding, similarity & validation
 │   ├── dataset_prep.py     # DuckDuckGo scraper & curated fallback url downloads
 │   ├── requirements.txt    # Python dependencies (TensorFlow, OpenCV, Supabase, etc.)
 │   └── sessions/           # Local folder mapping cached session assets
 └── frontend/
     ├── index.html          # SPA dashboard markup
-    ├── style.css           # Glassmorphism styling rules
+    ├── style.css           # Glassmorphism CSS rules
     └── app.js              # State manager, Chart.js handler & fetch requests
 ```
 
@@ -103,7 +107,7 @@ SUPABASE_URL=https://your-project-id.supabase.co
 SUPABASE_KEY=your-supabase-service-role-or-anon-key
 ```
 
-### 2. Run Application
+### 2. Execution Commands
 Run the backend server. The frontend folder is automatically served statically at `http://127.0.0.1:8000/`.
 
 ```bash
@@ -113,6 +117,3 @@ source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
 ```
-
----
-
